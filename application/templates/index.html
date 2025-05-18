@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+    <!-- main content card -->
+<div class="row">
+    <div class="col-12">
+        <div class="main-card-box card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+            <h1 class="text-white text-capitalize ps-3">{{ current_page_name }}</h1>
+          </div>
+          <div class="card-body px-0 pb-2">
+    <!-- pause main content card -->
+
+
+
+    <div class="filter-container justify-content-between pt-4">
+      <div class="row">
+          <div class="col">
+              <label for="site_filter" class="filter-labels text-sm mb-0 text-capitalize">Filter By Site</label>
+              <select class="form-select-box form-select" id="site_filter" name="site_id">
+                  <option value="" {% if selected_site_id is none %}selected{% endif %}>All Sites</option>
+                  {% for site in sites %}
+                  <option value="{{ site.id }}" {% if selected_site_id == site.id %}selected{% endif %}>
+                      {{ site.site_name }}
+                  </option>
+                  {% endfor %}
+              </select>
+          </div>
+          <div class="col">
+              <label class="filter-labels text-sm mb-0 text-capitalize">Filter By Year</label>
+              <select class="form-select-box form-select" id="year" name="year">
+                  <option value="" {% if selected_year is none %}selected{% endif %}>All Years</option>
+                  {% for year in available_years %}
+                  <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>
+                  {% endfor %}
+              </select>
+          </div>
+      </div>
+  </div>
+  
+
+    
+
+  
+  
+  
+
+
+
+    <div class="row">
+      <div class="ms-3">
+          <p class="mb-4"></p>
+      </div>
+  
+      <!-- Open Tickets Card -->
+      <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+        <a href="{{ url_for('routes.tickets') }}">
+          <div class="small-cards-dashboard card">
+              <div class="card-header p-2 ps-3">
+                  <div class="d-flex justify-content-between">
+                      <div>
+                          <p class="text-sm mb-0 text-capitalize">Total Tickets</p>
+                          <h4 class="mb-0">{{ total_count }}</h4>
+                      </div>
+                      <div class="icon icon-md icon-shape bg-gradient-main shadow-dark shadow text-center border-radius-lg">
+                          <i class="material-symbols-rounded opacity-10">weekend</i>
+                      </div>
+                  </div>
+              </div>
+              <hr class="dark horizontal my-0">
+              <div class="card-footer p-2 ps-3">
+                  <p class="mb-0 text-sm"><span class="text-success font-weight-bolder"></span>Last 365 Days</p>
+              </div>
+          </div></a>
+      </div>
+  
+      <!-- Pending Tickets Card -->
+      <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+        <a href="{{ url_for('routes.tickets', status_filter='1-pending') }}">
+          <div class="small-cards-dashboard card">
+              <div class="card-header p-2 ps-3">
+                  <div class="d-flex justify-content-between">
+                      <div>
+                          <p class="text-sm mb-0 text-capitalize">Pending Tickets</p>
+                          <h4 class="mb-0">{{ pending_count }}</h4>
+                      </div>
+                      <div class="icon icon-md icon-shape bg-gradient-main shadow-dark shadow text-center border-radius-lg">
+                        <i class="material-symbols-rounded opacity-10">pending_actions</i>
+                      </div>
+                  </div>
+              </div>
+              <hr class="dark horizontal my-0">
+              <div class="card-footer p-2 ps-3">
+                  <p class="mb-0 text-sm"><span class="text-success font-weight-bolder"></span>Last 365 Days</p>
+              </div>
+          </div></a>
+      </div>
+  
+      <!-- In Progress Tickets Card -->
+      <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+        <a href="{{ url_for('routes.tickets', status_filter='2-progress') }}">
+          <div class="small-cards-dashboard card">
+              <div class="card-header p-2 ps-3">
+                  <div class="d-flex justify-content-between">
+                      <div>
+                          <p class="text-sm mb-0 text-capitalize">In Progress Tickets</p>
+                          <h4 class="mb-0">{{ in_progress_count }}</h4>
+                      </div>
+                      <div class="icon icon-md icon-shape bg-gradient-main shadow-dark shadow text-center border-radius-lg">
+                          <i class="material-symbols-rounded opacity-10">progress_activity</i>
+                      </div>
+                  </div>
+              </div>
+              <hr class="dark horizontal my-0">
+              <div class="card-footer p-2 ps-3">
+                  <p class="mb-0 text-sm"><span class="text-danger font-weight-bolder"></span>Last 365 Days</p>
+              </div>
+          </div></a>
+      </div>
+  
+      <!-- Closed Tickets Card -->
+      <div class="col-xl-3 col-sm-6">
+        <a href="{{ url_for('routes.tickets', status_filter='3-completed') }}">
+          <div class="small-cards-dashboard card">
+              <div class="card-header p-2 ps-3">
+                  <div class="d-flex justify-content-between">
+                      <div>
+                          <p class="text-sm mb-0 text-capitalize">Closed Tickets</p>
+                          <h4 class="mb-0">{{ completed_count }}</h4>
+                      </div>
+                      <div class="icon icon-md icon-shape bg-gradient-main shadow-dark shadow text-center border-radius-lg">
+                          <i class="material-symbols-rounded opacity-10">domain_verification</i>
+                      </div>
+                  </div>
+              </div>
+              <hr class="dark horizontal my-0">
+              <div class="card-footer p-2 ps-3">
+                  <p class="mb-0 text-sm"><span class="text-success font-weight-bolder"> </span>Last 365 Days</p>
+              </div>
+          </div>
+      </div></a>
+  </div>
+  
+
+
+      <div class="row">
+        <div class="tall-card-box col-lg-4 col-md-6 mt-4 mb-4">
+          <div class="tall-card card">
+            <div class="card-dashboard-box">
+              <h6 class="mb-0 ">Weekly Tickets</h6>
+              <p class="text-sm "> Busiest day of the week. </p>
+              <div class="pe-2">
+                <div class="chart">
+                  <canvas id="chart-bars" class="chart-canvas" height="170"></canvas>
+                  <script>
+                    // Pass the data to JavaScript
+                    var weekdays = {{ weekdays|tojson }};
+                    var weekday_counts = {{ weekday_counts|tojson }};
+                  </script>
+                </div>
+              </div>
+              <hr class="dark horizontal">
+              <div class="d-flex ">
+                <i class="material-symbols-rounded text-sm my-auto me-1">schedule</i>
+                <p class="mb-0 text-sm"> updated today </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="tall-card-box col-lg-4 col-md-6 mt-4 mb-4">
+          <div class="tall-card card">
+            <div class="card-dashboard-box">
+              <h6 class="mb-0 "> Monthly Tickets </h6>
+              <p class="text-sm ">Busiest month of the year.</p>
+              <div class="pe-2">
+                <div class="chart">
+                  <canvas id="chart-line" class="chart-canvas" height="170"></canvas>
+                  <script>
+                    // Pass the data to JavaScript
+                    var months = {{ months|tojson }};
+                    var counts = {{ counts|tojson }};
+                  </script>
+                </div>
+              </div>
+              <hr class="dark horizontal">
+              <div class="d-flex ">
+                <i class="material-symbols-rounded text-sm my-auto me-1">schedule</i>
+                <p class="mb-0 text-sm"> updated today </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tickets Card top 5-->
+        <div class="tall-card-box col-lg-4 col-md-6 mt-4 mb-4">
+          <div class="tall-card card">
+            <div class="card-dashboard-box">
+              <h6 class="mb-0 ">Common Problem</h6>
+              <div class="pe-2">
+                <div class="table-responsive pe-4">
+                  {% if top_titles %}
+                  <table class="table align-items-right mb-0 table-striped">
+                      <thead>
+                          <tr>
+                            <th scope="col" class="dashboard-table text-uppercase text-xxs font-weight-bolder">ERROR</th>
+                            <th scope="col" class="text-uppercase text-xxs font-weight-bolder text-end">COUNT</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {% for title in top_titles %}
+                          <tr>
+                              <td class="dashboard-table">{{ title.title_name[:25] }}</td>
+                              <td class="text-end text-align-center">{{ title.ticket_count }}</td>
+                          </tr>
+                          {% endfor %}
+                      </tbody>
+                  </table>
+                  {% else %}
+                  <p>No data available.</p>
+                  {% endif %}
+                </div>
+              </div>
+          </div>
+        </div>
+      </div>
+        <!-- Closed Tickets Card -->
+
+
+
+
+
+
+
+
+
+        <!-- continue main content card -->
+    </div>
+</div>
+</div>
+</div>
+<!-- End main content card -->
+
+
+<script>
+  </script>
+  
+<script src="{{ url_for('static', filename='js/plugins/chartjs.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+{% endblock %}
+

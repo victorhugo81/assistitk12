@@ -1,0 +1,12 @@
+.env
+*.pyc
+__pycache__/
+instance/
+myenv/
+.DS_Store
+attachments/
+
+*.log
+*.pot
+*.po
+*.pyo

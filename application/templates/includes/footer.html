@@ -1,0 +1,56 @@
+
+<!-- footer -->
+<footer class="footer py-4">
+  <div class="container-fluid">
+    <div class="row justify-content-end">
+      <div class="col-12 text-end">
+        <div class="copyright text-sm text-muted">
+          <a href="" class="font-weight-bold" target="_blank">AssistITk12</a>
+          © <script>
+            document.write(new Date().getFullYear());
+          </script>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<!-- End footer -->
+</div>
+</main>
+
+
+
+<!--   close warning messages  -->
+<script>
+  setTimeout(() => {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => alert.classList.remove('show'));
+  }, 5000); // Dismiss after 5 seconds
+</script>
+
+
+<!--   Core JS Files   -->
+<script src="{{ url_for('static', filename='js/core/popper.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/bootstrap.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/plugins/perfect-scrollbar.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/plugins/smooth-scrollbar.min.js') }}"></script>
+
+<script>
+var win = navigator.platform.indexOf('Win') > -1;
+if (win && document.querySelector('#sidenav-scrollbar')) {
+var options = {
+  damping: '0.5'
+}
+Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
+}
+</script>
+<!-- Github buttons -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+<!-- Control Center for Material Dashboard: parallax effects, scripts for the example pages etc -->
+<script src="{{ url_for('static', filename='js/material-dashboard.js') }}"></script>
+</body>
+
+</html>
+

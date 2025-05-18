@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+    <!-- main content card -->
+<div class="row">
+    <div class="col-12">        
+        <div class="main-card-box card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+            <h1 class="text-white text-capitalize ps-3">Edit User</h1>
+          </div>
+        <div class="card-body px-0 pb-2">
+            <br>
+            <div class="row">
+                <div class="col"></div>
+                <div class="col-md-auto"></div>
+    <!-- pause main content card -->
+
+
+
+
+            
+    <!-- form -->
+    <div class="card-body align-items-center">
+        <div class="container-md align-items-center">
+    <form method="POST" action="{{ url_for('routes.edit_user', user_id=user.id) }}">
+        {{ form.hidden_tag() }}
+        <div class="input-group input-group-outline my-3">
+        {{ form.first_name.label (class="form-label") }}
+        {% if current_user.is_admin %}{{ form.first_name (class="form-control") }}{% else %}{{ form.first_name (class="form-control",readonly="readonly",style="background-color:#f6f6f6") }} {% endif %}
+        </div>
+        <div class="input-group input-group-outline my-3">
+        {{ form.middle_name.label (class="form-label") }} 
+        {% if current_user.is_admin %}{{ form.middle_name (class="form-control")  }}{% else %}{{ form.middle_name (class="form-control",readonly="readonly",style="background-color:#f6f6f6") }} {% endif %}
+        </div>
+        <div class="input-group input-group-outline my-3">
+        {{ form.last_name.label (class="form-label") }} 
+        {% if current_user.is_admin %}{{ form.last_name(class="form-control") }}{% else %}{{ form.last_name(class="form-control",readonly="readonly",style="background-color:#f6f6f6") }} {% endif %}
+        </div>
+        <div class="input-group input-group-outline my-3">
+        {{ form.email.label (class="form-label") }} 
+        {% if current_user.is_admin %}{{ form.email (class="form-control", type="email") }}{% else %}{{ form.email (class="form-control", type="email",readonly="readonly",style="background-color:#f6f6f6") }} {% endif %}
+        </div>
+
+        <br>
+
+        <div class="dropdown input-group input-group-outline my-3">
+        {{ form.role_id.label (class="form-label") }} 
+        {% if current_user.is_admin %}{{ form.role_id (class="form-select-box form-select") }}{% else %}{{ form.role_id (class="form-select-box form-select",readonly="readonly",style="background-color:#f6f6f6",disabled="disabled") }} {% endif %}
+        </div>
+        <div class="dropdown input-group input-group-outline my-3">
+            {{ form.status.label (class="form-label") }} 
+            {% if current_user.is_admin %}{{ form.status (class="form-select-box form-select") }}{% else %}{{ form.status (class="form-select-box form-select",readonly="readonly",style="background-color:#f6f6f6",disabled="disabled") }} {% endif %}
+        </div>
+        <div class="input-group input-group-outline my-3">
+            {{ form.site_id.label (class="form-label") }} 
+            {% if current_user.is_admin %}{{ form.site_id (class="form-select-box form-select") }}{% else %}{{ form.site_id (class="form-select-box form-select",readonly="readonly",style="background-color:#f6f6f6",disabled="disabled") }} {% endif %}
+        </div>
+        <div class="input-group input-group-outline my-3">
+            {{ form.rm_num.label (class="form-label") }} 
+            {% if current_user.is_admin %}{{ form.rm_num (class="form-control") }}{% else %}{{ form.rm_num (class="form-control",readonly="readonly",style="background-color:#f6f6f6") }} {% endif %}
+        </div>
+
+        <br>
+        <div class="input-group input-group-outline my-3">
+        {{ form.password.label (class="form-label") }} 
+        {{ form.password(class="form-control", type="password", id="inputPassword5") }}
+    </div>
+        <p id="passwordHelpBlock" class="form-text">
+            Password must be over 10 characters long, contain letters and numbers, and special characters.
+        </p>
+        <div class="input-group input-group-outline justify-content-end gap-2">
+        {{ form.submit (class="btn bg-gradient-main")}}
+        <a type="button" class="btn reset-button-box shadow-dark" href="/users">Back</a>
+        </div>
+    </form>
+        </div>
+    </div>
+    <!-- End form -->
+
+
+
+
+    <!-- continue main content card -->
+</div>
+</div>
+</div>
+</div>
+<!-- End main content card -->
+
+{% endblock %}

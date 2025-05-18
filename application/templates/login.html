@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>AssistITk12</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    <!-- Bootstrap CSS -->
+    <link href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet">
+    <!-- Custom CSS Files -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  </head>
+  <body>
+    {% for notification in active_notifications %}
+    <div class="border-radius-lg alert alert-warning alert-dismissible text-white fade show" 
+         role="alert" 
+         aria-live="assertive" 
+         aria-atomic="true">
+        <span>{{ notification.msg_content }}</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close notification"></button>
+    </div>
+    {% endfor %}
+    <section class="ftco-section" role="main">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-md-12 col-lg-10">
+            <div class="wrap-box d-md-flex">
+              <div class="text-wrap p-4 p-lg-5 text-center d-flex align-items-center order-md-last">
+                <div class="text w-100">
+                  <h1 class="visually-hidden">AssistITk12 Login Page</h1>
+                  <img src="{{ url_for('static', filename='img/logo-dark.png') }}" 
+                       class="navbar-brand-img mb-4" 
+                       alt="AssistITk12 Logo">
+                  <h3 class="sub-title-login" id="organization-name">{{ organization_name }}</h3>
+                </div>
+              </div>
+              <div class="login-wrap p-4 p-lg-5">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="border-radius-lg alert alert-warning alert-dismissible text-white fade show" 
+                           role="alert" 
+                           aria-live="assertive" 
+                           aria-atomic="true">
+                          <span>{{ message }}</span>
+                          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close notification"></button>
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+                <div class="d-flex">
+                  <div class="w-100">
+                    <h1 class="mb-4 login-text" id="signin-heading">Sign In</h1>
+                  </div>
+                </div>
+                <form method="POST" class="signin-form" aria-labelledby="signin-heading">
+                  {{ form.hidden_tag() }}
+                  {{ form.csrf_token }}
+                  <div class="login-form-group mb-3">
+                    <label class="label" for="email" id="email-label">Email</label>
+                    {{ form.email(class="login-form-control", type="email", aria_required="true", aria_labelledby="email-label", aria_describedby="email-help") }}
+                    <div id="email-help" class="form-text visually-hidden">Enter your email address</div>
+                  </div>
+                  <div class="login-form-group mb-3">
+                    <label class="label" for="password" id="password-label">Password</label>
+                    {{ form.password(class="login-form-control", aria_required="true", aria_labelledby="password-label") }}
+                  </div>
+                  <div class="login-form-group">
+                    {{ form.submit(class="form-control login-btn btn btn-primary submit px-3", aria_label="Sign in to your account") }}
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- footer -->
+    <footer class="footer" role="contentinfo">
+      <div class="container-fluid">
+        <div class="row justify-content-end">
+          <div class="col-12 text-end">
+            <div class="copyright text-sm text-muted">
+              <a href="#" class="font-weight-bold" target="_blank" aria-label="Visit AssistITk12 website">AssistITk12</a>
+              © <script>document.write(new Date().getFullYear());</script>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+    <script src="{{ url_for('static', filename='js/core/bootstrap.bundle.min.js') }}"></script>
+  </body>
+</html>

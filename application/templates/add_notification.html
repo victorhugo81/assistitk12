@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+    <!-- main content card -->
+<div class="row">
+    <div class="col-12">        
+        <div class="main-card-box card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+            <h1 class="text-white text-capitalize ps-3">Add New Notification</h1>
+          </div>
+        <div class="card-body px-0 pb-2">
+            <br>
+            <div class="row">
+                <div class="col"></div>
+                <div class="col-md-auto"></div>
+    <!-- pause main content card -->
+
+
+
+
+    <!-- form -->
+<form method="POST">
+    <div class="card-body align-items-center pt-4" >
+        <div class="container-md align-items-center">
+    {{ form.hidden_tag() }}
+    <div class="input-group input-group-outline my-3">
+        {{ form.msg_name.label (class="form-label") }}
+        {{ form.msg_name (class="form-control") }}
+        </div>
+        <div class="input-group input-group-outline my-3">
+        {{ form.msg_content.label (class="form-label") }}
+        {{ form.msg_content (class="form-control", style="height: 100px") }}
+        </div>
+        <div class="input-group input-group-outline justify-content-end gap-2">
+        {{ form.submit (class="btn bg-gradient-main")}}
+        <a type="button" class="btn reset-button-box shadow-dark" href="/notifications">Back</a>
+        </div>
+</form>
+
+</div>
+</div>
+<!-- End form -->
+
+
+
+
+<!-- continue main content card -->
+</div>
+</div>
+</div>
+</div>
+<!-- End main content card -->
+
+{% endblock %}

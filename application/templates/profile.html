@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+    <!-- main content card -->
+<div class="row">
+    <div class="col-12">
+        <div class="main-card-box card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+            <h1 class="text-white text-capitalize ps-3">{{ current_page_name }}</h1>
+          </div>
+          <div class="card-body px-0 pb-2">
+    <!-- pause main content card -->
+
+
+
+
+    <!-- Secondary Menu -->
+    <div class="container-fluid my-3 py-3">
+    <div class="row mb-5">
+      <div class="col-lg-3">
+        <div class="card position-sticky top-1">
+          <ul class="nav flex-column bg-white border-radius-lg p-3">
+            <li class="nav-item secondary-nav">
+              <a class="nav-link text-dark d-flex" data-scroll="" href="#profile">
+                <i class="material-symbols-rounded text-lg me-2">person</i>
+                <span class="text-sm">Profile</span>
+              </a>
+            </li>
+            <li class="nav-item secondary-nav">
+              <a class="nav-link text-dark d-flex" data-scroll="" href="#details">
+                <i class="material-symbols-rounded text-lg me-2">person</i>
+                <span class="text-sm">Details</span>
+              </a>
+            </li>
+            <li class="nav-item secondary-nav pt-2">
+              <a class="nav-link text-dark d-flex" data-scroll="" href="#password">
+                <i class="material-symbols-rounded text-lg me-2">lock</i>
+                <span class="text-sm">Change Password</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-lg-9 mt-lg-0 mt-4">
+    <!-- END Secondary Menu -->
+
+
+
+
+    <!-- Profile Card --> 
+    <div class="card card-body px-4">
+      <div class="row justify-content-center align-items-center" id="profile">
+
+       <!--  user name -->
+        <h2 class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3 ps-3">
+       <span class="text-white text-uppercase fs-2">{{ user.first_name }}</span> <span class="text-white text-uppercase fs-3">{{ user.middle_name }} {{ user.last_name }}</span>
+        </h2> 
+
+
+        <!-- Ticket Status -->
+        <div class="search-content-box  my-3 " id="details">
+          <div class="container mb-4 pt-4">
+            <div class="row">
+              <div class="col">
+                <p class="mb-0 font-weight-normal text-md">
+                  <strong>Email: </strong>{{ user.email }}
+               </p>
+               <p class="mb-0 font-weight-normal text-md">
+                <strong>User Role: </strong>{{ role.role_name }}
+            </p>
+              </div>
+              <div class="col">
+                <p class="mb-0 font-weight-normal text-md">
+                  <strong>Site: </strong>{{ user.site.site_name }}
+               </p>
+               <p class="mb-0 font-weight-normal text-md">
+                 <strong>Room: </strong>{{ user.rm_num }}
+              </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+<hr>
+  
+
+        
+        <!-- Card Change Password -->
+        <div class="search-content-box  my-3" id="password">
+            <div class="card-header">
+                <h5>Change Password</h5><br>
+            </div>
+            <div class="card-body pt-0">
+                <!-- Open the form here -->
+                <form method="POST" action="{{ url_for('routes.profile') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Use hidden for CSRF token -->
+                    <div class="col input-group input-group-outline">
+                        <label class="form-label " style="width:200px;">New password: </label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <br>
+                    <div class="col input-group input-group-outline">
+                        <label class="form-label" style="width:200px;">Confirm password: </label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                    <h5 class="mt-5">Password requirements</h5>
+                    <p class="text-muted mb-2">
+                        Please follow this guide for a strong password:
+                    </p>
+                    <ul class="text-muted ps-4 mb-0 float-start">
+                        <li>
+                            <span class="text-sm">Password must be over 10 characters long</span>
+                        </li>
+                        <li>
+                            <span class="text-sm">Must contain letters and numbers</span>
+                        </li>
+                        <li>
+                            <span class="text-sm">Must contain special characters</span>
+                        </li>
+                    </ul>
+                    <!-- Submit button is inside the form -->
+                    <input class="btn bg-gradient-main add-table-button float-end mt-6 px-4 shadow-dark" type="submit" value="Save">
+                </form>
+            </div>
+        </div>
+        <!-- END Card Change Password -->
+
+
+        </div>
+      </div>
+    </div>
+
+
+
+
+
+
+
+    
+        <!-- continue main content card -->
+    </div>
+    </div>
+    </div>
+    </div>
+    <!-- End main content card -->
+
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Main Content Card -->
+<div class="row">
+    <div class="col-12">        
+        <div class="main-card-box card my-4">
+            <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+                <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+                    <h1 class="text-white text-capitalize ps-3">Edit Site</h1>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- pause main content card -->
+
+                <!-- Form -->
+                <div class="card-body align-items-center">
+                    <div class="container-md align-items-center">
+                        <form method="POST" action="{{ url_for('routes.edit_site', site_id=site.id) }}">
+                            {{ form.hidden_tag() }}
+                            <div class="input-group input-group-outline my-3">
+                                {{ form.site_name.label (class="form-label") }}
+                                {{ form.site_name  (class="form-control") }}
+                            </div>
+                            <div class="input-group input-group-outline my-3">
+                                {{ form.site_GU.label (class="form-label") }}
+                                 {{ form.site_GU (class="form-control") }}
+                            </div>
+                            <div class="input-group input-group-outline my-3">
+                                {{ form.site_code.label (class="form-label") }}
+                                {{ form.site_code (class="form-control") }}
+                            </div>
+                            <div class="input-group input-group-outline my-3">
+                                {{ form.site_abb.label (class="form-label") }}
+                                {{ form.site_abb (class="form-control") }}
+                            </div>
+                            <div class="input-group input-group-outline my-3">
+                                {{ form.site_cds.label (class="form-label") }}
+                                 {{ form.site_cds (class="form-control") }}
+                            </div>
+                            <div class="input-group input-group-outline my-3">
+                                {{ form.site_address.label (class="form-label") }}
+                                 {{ form.site_address (class="form-control") }}
+                            </div>
+                            <div class="input-group input-group-outline my-3">
+                                {{ form.site_type.label (class="form-label") }}
+                                 {{ form.site_type (class="form-control") }}
+                            </div>
+                            <div class="input-group input-group-outline justify-content-end gap-2">
+                                {{ form.submit(class_="btn bg-gradient-main")}}
+                                <a type="button" class="btn reset-button-box shadow-dark" href="/sites">Back</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <!-- End Form -->
+
+
+
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

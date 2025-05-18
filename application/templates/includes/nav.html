@@ -1,0 +1,235 @@
+
+
+<!-- Navbar -->
+<aside class="sidenav navbar navbar-vertical navbar-expand-xs border-radius-lg fixed-start ms-2  bg-white my-2" id="sidenav-main">
+
+    <div class="sidenav-header">
+      <i class="fas fa-times p-3 cursor-pointer text-dark opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
+      <a class="navbar-brand px-4 py-3 m-0" href="{{ url_for('routes.index') }}" >
+        <img src="{{ url_for('static', filename='img/logo.png') }}" class="navbar-brand-img" alt="assistITk12">
+      </a>
+    </div>
+    <hr class="horizontal dark mt-0 mb-2">
+    <div class="collapse navbar-collapse  w-auto " id="sidenav-collapse-main">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="{% if current_page_name == 'Dashboard' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.index') }}">
+            <i class="material-symbols-rounded opacity-5">dashboard</i>
+            <span class="nav-link-text ms-1">Dashboard</span>
+          </a>
+        </li>
+        <li class="nav-item"> 
+          <a class="{% if current_page_name == 'Manage Tickets' or current_page_name == 'New Tickets' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.tickets') }}">
+            <i class="material-symbols-rounded opacity-5">confirmation_number</i>
+            <span class="nav-link-text ms-1">Tickets</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="{% if current_path == '/profile' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.profile') }}">
+            <i class="material-symbols-rounded opacity-5">badge</i>
+            <span class="nav-link-text ms-1">Profile</span>
+          </a>
+        </li>
+
+         <!-- tech and specialist Only Items -->
+         {% if current_user.is_tech_role %}
+        <li class="nav-item nav-cat-list">
+          <h6 class="ps-4 ms-2 text-uppercase text-xxs text-dark font-weight-bolder opacity-5">User Settings</h6>
+        </li>
+        <li class="nav-item"> 
+          <a class="{% if current_page_name == 'Manage Users' or current_page_name == 'Add User' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.users') }}">
+            <i class="material-symbols-rounded opacity-5">person</i>
+            <span class="nav-link-text ms-1">Users</span>
+          </a>
+        </li>
+        {% endif %}
+        <!-- END tech and specialist Only Items -->
+
+
+         <!-- Admin-Only Items -->
+         {% if current_user.is_admin %}
+        <li class="nav-item nav-cat-list">
+          <h6 class="ps-4 ms-2 text-uppercase text-xxs text-dark font-weight-bolder opacity-5">User Settings</h6>
+        </li>
+        <li class="nav-item"> 
+          <a class="{% if current_page_name == 'Manage Users' or current_page_name == 'Add User' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.users') }}">
+            <i class="material-symbols-rounded opacity-5">person</i>
+            <span class="nav-link-text ms-1">Users</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="{% if current_page_name == 'Manage User Roles' or current_page_name == 'New Role' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.roles') }}">
+            <i class="material-symbols-rounded opacity-5">group_add</i>
+            <span class="nav-link-text ms-1">Roles</span>
+          </a>
+        </li>
+
+        <li class="nav-item nav-cat-list">
+          <h6 class="ps-4 ms-2 text-uppercase text-xxs text-dark font-weight-bolder opacity-5">Settings</h6>
+        </li>
+
+
+        <li class="nav-item">
+          <a class="{% if current_path == '/organization' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.organization') }}">
+            <i class="material-symbols-rounded opacity-5">database</i>
+            <span class="nav-link-text ms-1">Data Integration</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="{% if current_page_name == 'Manage Sites' or current_page_name == 'New Site' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.sites') }}">
+            <i class="material-symbols-rounded opacity-5">house</i>
+            <span class="nav-link-text ms-1">Sites</span>
+          </a>
+        </li>
+        <li class="nav-item">
+            <a class="{% if current_page_name == 'Manage Notifications' or current_page_name == 'New Notification' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.notifications') }}">
+              <i class="material-symbols-rounded opacity-5">notifications</i>
+              <span class="nav-link-text ms-1">Notifications</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="{% if current_page_name == 'Manage Ticket Titles' or current_page_name == 'New Ticket Title' %}nav-link active bg-gradient-main text-white{% else %}nav-link text-dark{% endif %}" href="{{ url_for('routes.titles') }}">
+              <i class="material-symbols-rounded opacity-5">match_case</i>
+              <span class="nav-link-text ms-1">Ticket Titles</span>
+            </a>
+          </li>
+          {% endif %}
+          <!-- End Admin-Only Items -->
+
+      </ul>
+    </div>
+    <div class="sidenav-footer position-absolute w-100 bottom-0 ">
+      <div class="mx-3">
+        <a class="btn btn-outline-dark mt-4 w-100" href="{{ url_for('routes.logout') }}" type="button">Log Out</a>
+      </div>
+    </div>
+  </aside>
+  <main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg ">
+    <!-- Navbar -->
+
+
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-main navbar-expand-lg px-0 mx-3 shadow-none border-radius-xl" id="navbarBlur" data-scroll="true">
+      <div class="container-fluid py-1 px-3">
+        <div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          <!-- mobile menu -->
+            <div class="ms-md-auto pe-md-3 d-flex align-items-center">
+              <div class="mobile-menu mobileOnly" id="menuToggle">
+                <input type="checkbox" />
+                <span></span>
+                <span></span>
+                <span></span>
+
+
+                <ul class="mobile-menu" id="menu">  
+                  <li class="list-group-item">
+                    <a class="{% if current_page_name == 'Dashboard' %} active{% else %}text-dark{% endif %}" href="{{ url_for('routes.index') }}">Dashboard</a>
+                  </li>
+                  <li class="list-group-item">
+                    <a class="{% if current_page_name == 'Manage Tickets' or current_page_name == 'New Tickets' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.tickets') }}">Tickets</a>
+                  </li>
+                  <li class="list-group-item">
+                    <a class="{% if current_path == '/profile' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.profile') }}">Profile</a>
+                  </li>
+
+                  <!-- tech and specialist Only Items -->
+                  {% if current_user.is_tech_role %}
+                  <li class="list-group-item nav-cat-list">
+                    <h6 class="ms-2 text-uppercase text-xxs text-dark font-weight-bolder opacity-5">User Settings</h6>
+                  </li>
+                  <li class="list-group-item"> 
+                    <a class="{% if current_path == '/users' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.users') }}">Users</a>
+                  </li>
+                  {% endif %}
+                  <!-- END tech and specialist Only Items -->
+
+
+                  <!-- Admin-Only Items -->
+                  {% if current_user.is_admin %}
+                  <li class="list-group-item nav-cat-list">
+                    <h6 class="ms-2 text-uppercase text-xxs text-dark font-weight-bolder opacity-5">User Settings</h6>
+                  </li>
+                  <li class="list-group-item"> 
+                    <a class="{% if current_path == '/users' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.users') }}">Users</a>
+                  </li>
+                  <li class="list-group-item"> 
+                    <a class="{% if current_path == '/roles' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.roles') }}">Roles</a>
+                  </li>
+
+                  <li class="list-group-item nav-cat-list">
+                    <h6 class="ms-2 text-uppercase text-xxs text-dark font-weight-bolder opacity-5">Settings</h6>
+                  </li>
+                  <li class="list-group-item"> 
+                    <a class="{% if current_path == '/organization' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.organization') }}">Data Integration</a>
+                  </li>
+                  <li class="list-group-item"> 
+                    <a class="{% if current_path == '/sites' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.sites') }}">Sites
+                    </a>
+                  </li>
+                  <li class="list-group-item"> 
+                    <a class="{% if current_path == '/notifications' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.notifications') }}">Notifications
+                      </a>
+                    </li>
+                    <li class="list-group-item"> 
+                      <a class="{% if current_page_name == 'Manage Ticket Titles' or current_page_name == 'New Ticket Title' %}active{% else %}text-dark{% endif %}" href="{{ url_for('routes.titles') }}">Ticket Titles</a>
+                    </li>
+                    {% endif %}
+                    <!-- End Admin-Only Items -->
+                  <!-- end mobile menu -->
+
+
+
+
+                  
+                </ul>
+              </div>
+            </div>
+
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          <ul class="navbar-nav d-flex align-items-center  justify-content-end">
+            <li class="mt-1">
+              <a class="user-welcome" href="{{ url_for('routes.profile') }}">Hello, {{ current_user.first_name }}!</a>
+              <p class="site-name-nav fw-light text-uppercase">{{ current_user.site.site_name }}</p>
+            </li>
+            <li class="nav-item dropdown pe-3 d-flex align-items-center">
+              <ul class="dropdown-menu  dropdown-menu-end  px-2 py-3 me-sm-n4" aria-labelledby="dropdownMenuButton">
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <!-- end top Navbar -->
+    <!-- Navbar -->

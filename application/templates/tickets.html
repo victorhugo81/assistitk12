@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+    <!-- main content card -->
+<div class="row">
+    <div class="col-12">
+        <div class="main-card-box card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+            <h1 class="text-white text-capitalize ps-3">{{ current_page_name }}</h1>
+          </div>
+          <div class="card-body px-0 pb-2">
+            <br>
+
+
+
+
+
+
+    <!-- search box card -->
+    <div class="search-content-box">
+
+      <div class="row justify-content-between mb-4">
+          <div class="col">
+            <label for="site_filter" class="filter-labels text-sm mb-0 text-capitalize">Filter By Site</label>
+            <form method="get" class="d-flex">
+              <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
+              <input type="hidden" name="role_filter" value="{{ request.args.get('role_filter', '') }}">
+              <select name="site_filter" class="form-select-box form-select" onchange="this.form.submit()">
+                  <option value="">All Sites</option>
+                  {% for site in sites %}
+                  <option value="{{ site.id }}" {% if request.args.get('site_filter', '')|int == site.id %}selected{% endif %}>
+                      {{ site.site_name }}
+                  </option>
+                  {% endfor %}
+              </select>
+          </form>
+          </div>
+          <div class="col">
+            <label for="site_filter" class="filter-labels text-sm mb-0 text-capitalize">Filter By User Status</label>
+            <form method="get" class="d-flex">
+              <!-- Retain other filter values in hidden inputs -->
+              <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
+              <input type="hidden" name="site_filter" value="{{ request.args.get('site_filter', '') }}">
+              <select name="status_filter" class="form-select-box form-select" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                {% for raw, display in statuses %}
+                    <option value="{{ raw }}" {% if request.args.get('status_filter', '') == raw %}selected{% endif %}>
+                        {{ display }}
+                    </option>
+                {% endfor %}
+            </select>
+            
+          </form>
+          </div>
+      </div>
+
+      <div class="col">
+        <label for="assigned_user_filter" class="filter-labels text-sm text-capitalize">Filter By Assigned User</label>
+        <form method="get" class="d-flex mb-4">
+            <!-- Retain other filter values -->
+            <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
+            <input type="hidden" name="site_filter" value="{{ request.args.get('site_filter', '') }}">
+            <input type="hidden" name="status_filter" value="{{ request.args.get('status_filter', '') }}">
+    
+            <select name="assigned_user_filter" class="form-select-box form-select" onchange="this.form.submit()">
+                <option value="">All Users</option>
+                {% for user in assigned_users %}
+                    <option value="{{ user.id }}" {% if request.args.get('assigned_user_filter', '')|int == user.id %}selected{% endif %}>
+                        {{ user.get_full_name() }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    
+    
+  </div>
+<!-- end search box card -->
+
+
+
+
+
+          <div class="table-per-page-section">
+            <div class="row justify-content-between">
+              <div class="col-4">
+                <form method="get" class="d-flex">
+                  <label for="per_page">Items per page: </label>
+                  <select name="per_page" id="per_page" class="per-page-drop"  onchange="this.form.submit()">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                  </select>
+                </form>
+              </div>
+              <div class="col-2">
+              <a href="{{ url_for('routes.add_ticket') }}" type="button" class="btn bg-gradient-main add-table-button shadow-dark">Add Ticket</a>
+            </div>
+          </div>
+        </div>
+    <!-- pause main content card -->
+
+
+
+
+
+<!-- Main content table -->
+
+<div class="table-responsive p-0">
+  <table class="table align-items-right mb-0 table-striped">
+    <thead>
+      <tr>
+        <th class="text-uppercase text-xxs font-weight-bolder">Description</th>
+        <th class="text-uppercase text-xxs font-weight-bolder">Site</th>
+        <th class="text-uppercase text-xxs font-weight-bolder">Name</th>
+        <th class="text-uppercase text-xxs font-weight-bolder">Assigned to</th>
+        <th class="text-uppercase text-xxs font-weight-bolder">Status</th>
+        <th class="text-uppercase text-xxs font-weight-bolder">Date</th>
+        <th class="text-uppercase text-xxs font-weight-bolder text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ticket in tickets %}
+      <tr>
+        <td>
+          <div class="d-flex px-2 py-1">
+            <div class="d-flex flex-column justify-content-center">
+              <a href="{{ url_for('routes.edit_ticket', ticket_id=ticket.id) }}">
+                <h6 class="mb-0 text-sm">{{ ticket.title.title_name }}</h6>
+              </a>
+              <span class="text-secondary text-xs font-weight-bold text-truncate" style="max-width: 200px;">
+                {% for content in ticket.contents %}
+                  {{ content.content }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span class="text-secondary text-xs font-weight-bold">
+            {% if ticket.user and ticket.user.site %}
+              {{ ticket.user.site.site_name }}  <!-- Accessing the Site name through the User relationship -->
+            {% else %}
+              N/A
+            {% endif %}
+          </span>
+        </td>
+        <td>
+          <span class="text-secondary text-xs font-weight-bold text-capitalize">
+            {{ ticket.user.get_full_name() if ticket.user else "N/A" }}
+          </span>
+        </td>
+        <td>
+          <span class="text-secondary text-xs font-weight-bold text-capitalize">
+            {{ ticket.assigned_to.get_full_name() if ticket.assigned_to else "Not Assigned" }}
+          </span>
+        </td>
+        <td>
+          <span class="badge 
+            {% if ticket.tck_status[2:] == 'pending' %} bg-success 
+            {% elif ticket.tck_status[2:] == 'progress' %} bg-warning 
+            {% else %} bg-danger {% endif %}">
+            {{ ticket.tck_status[2:] | capitalize }}
+          </span>
+        </td>
+        <td>
+          <span class="text-secondary text-xs font-weight-bold">{{ ticket.created_at.strftime('%m-%d-%Y') }}</span>
+        </td>
+        <td class="align-middle">
+
+
+
+          <div class="d-flex justify-content-end gap-2">
+
+              <!-- Escalated Tickets -->
+              {% if ticket.escalated == 1 %} 
+              <a href="{{ url_for('routes.edit_ticket', ticket_id=ticket.id) }}" class="btn font-weight-bold escalated">
+              <span class="material-symbols-rounded position-relative text-lg">
+                stars
+                </span>
+              </a>
+              {% else %} 
+              {% endif %}
+              
+            <a href="{{ url_for('routes.edit_ticket', ticket_id=ticket.id) }}" 
+               class="btn table-button-edit font-weight-bold" 
+               aria-label="Edit ticket {{ ticket.title.title_name }}">
+               <i class="material-symbols-rounded position-relative text-lg">info</i>
+              </a>
+
+        <!-- Admin-Only Items -->
+        {% if current_user.is_admin %}
+            <form action="{{ url_for('routes.delete_ticket', ticket_id=ticket.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the ticket {{ ticket.title.title_name }}?');">
+              <button type="submit" data-bs-toggle="tooltip" class="btn table-button-delete font-weight-bold" data-original-title="Delete ticket">
+                <i class="material-symbols-rounded position-relative text-lg">delete</i>
+              </button>
+          </form>
+          {% endif %}
+          <!-- End Admin-Only Items -->
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+
+
+
+
+
+<!-- Pagination for the ticket list -->
+<nav aria-label="Page navigation">
+  <ul class="pagination">
+    {{ pagination.links }}
+  </ul>
+</nav>
+
+
+        <!-- end content table -->
+
+          
+    <!-- continue main content card -->
+  </div>
+</div>
+</div>
+</div>
+<!-- End main content card -->
+
+{% endblock %}

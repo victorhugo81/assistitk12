@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- main content card -->
+<div class="row">
+    <div class="col-12">
+        <div class="main-card-box card my-4">
+            <!-- Card Header -->
+            <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+                <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+                    <h1 class="text-white text-capitalize ps-3">Manage Ticket</h1>
+                </div>
+                <div class="card-body px-0 pb-2">
+                    <br>
+                    <div class="row">
+                        <div class="col"></div>
+                        <div class="col-md-auto"></div>
+                        <!-- pause main content card -->
+
+                        <!-- Card Body -->
+                        <div class="card-body px-0 pb-2">
+                            <!-- Secondary Menu and Form -->
+                            <div class="container-fluid my-3 py-3">
+                                <!-- Form for Editing Ticket -->
+                                <form method="POST" action="{{ url_for('routes.edit_ticket', ticket_id=ticket.id) }}"
+                                    enctype="multipart/form-data">
+                                    {{ form.hidden_tag() }}
+
+                                    <!-- Sidebar Navigation -->
+                                    <div class="row mb-5">
+                                        <div class="col-lg-3">
+                                            <div class="card position-sticky top-1">
+                                                <ul class="nav flex-column bg-white border-radius-lg p-3">
+                                                    <!-- Ticket Status Link -->
+                                                    <li class="nav-item">
+                                                        <a class="nav-link text-dark d-flex" data-scroll=""
+                                                            href="#ticketstatus">
+                                                            <i class="material-symbols-rounded text-lg me-2">person</i>
+                                                            <span class="text-sm">Ticket Status</span>
+                                                        </a>
+                                                    </li>
+                                                    <!-- Ticket Details Link -->
+                                                    <li class="nav-item pt-2">
+                                                        <a class="nav-link text-dark d-flex" data-scroll=""
+                                                            href="#ticketdetails">
+                                                            <i class="material-symbols-rounded text-lg me-2">lock</i>
+                                                            <span class="text-sm">Ticket Details</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Comments Link -->
+                                                    <li class="nav-item pt-2">
+                                                        <a class="nav-link text-dark d-flex" data-scroll=""
+                                                            href="#ticketcomments">
+                                                            <i class="material-symbols-rounded text-lg me-2">lock</i>
+                                                            <span class="text-sm">Comments</span>
+                                                        </a>
+                                                    </li>
+
+                                                    <!-- Attachment Link -->
+                                                    <li class="nav-item pt-2">
+                                                        <a class="nav-link text-dark d-flex" data-scroll=""
+                                                            href="#ticketattachments">
+                                                            <i class="material-symbols-rounded text-lg me-2">lock</i>
+                                                            <span class="text-sm">Attachments</span>
+                                                        </a>
+                                                    </li>
+
+                                                    {% if current_user.role_id in [1, 2] %}
+                                                    <!-- Assign To Section -->
+                                                    <li>
+                                                        <hr>
+                                                        <div class="input-group input-group-outline my-3">
+                                                            <label class="assigned-to-label">Assigned to:</label>
+                                                            <select name="{{ form.assigned_to_id.name }}"
+                                                                id="{{ form.assigned_to_id.id }}"
+                                                                class="form-select-box form-select">
+                                                                {% for value, label in form.assigned_to_id.choices %}
+                                                                <option value="{{ value }}" {% if
+                                                                    form.assigned_to_id.data==value %}selected{% endif
+                                                                    %}>{{ label }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            <!-- Display Errors for Assigned To Field -->
+                                                            {% if form.assigned_to_id.errors %}
+                                                            <div class="invalid-feedback">
+                                                                {% for error in form.assigned_to_id.errors %}
+                                                                {{ error }}
+                                                                {% endfor %}
+                                                            </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </li>
+                                                    {% endif %}
+
+
+                                                    <!-- Escalation Button (Only visible to users with permission) -->
+                                                    {% if current_user.role_id in [1, 2, 3] %}
+                                                    <hr>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="escalate"
+                                                            name="escalate" value="1" {% if form.escalate.data
+                                                            %}checked{% endif %}>
+                                                        <label class="form-check-label" for="escalate">
+                                                            Escalate Ticket
+                                                        </label>
+                                                    </div>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <!-- Main Content Section -->
+                                        <div class="col-lg-9 mt-lg-0 mt-4">
+                                            <!-- Ticket Title -->
+                                            <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+                                                <h2 class="text-white text-capitalize ps-3">{{ ticket.title.title_name
+                                                    }}</h2>
+                                            </div>
+
+                                            <!-- Ticket Status Section -->
+                                            <div class="ticket-content-box" id="ticketstatus">
+                                                <h5>{{ form.tck_status.label.text }}</h5><br>
+                                                <div>
+                                                    {% for value, label in form.tck_status.choices %}
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio"
+                                                            name="{{ form.tck_status.name }}"
+                                                            id="tck_status_{{ value }}" value="{{ value }}" {% if
+                                                            ticket.tck_status==value %}checked{% endif %}>
+                                                        <label class="form-check-label" for="tck_status_{{ value }}">{{
+                                                            label }}</label>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+
+                                            <!-- Ticket Details Section -->
+                                            <div class="ticket-content-box" id="ticketdetails">
+                                                <div class="row justify-content-center align-items-center">
+                                                    <h5>Ticket Details</h5><br>
+                                                    <div class="col-sm" style="padding-left: 25px; padding-top: 25px;">
+                                                        {% if ticket.user and ticket.user.site %}
+                                                        <p class="mb-0 font-weight-normal text-md text-capitalize">
+                                                            <strong>Name: </strong>
+                                                            {{ ticket.user.get_full_name() }}
+                                                        </p>
+                                                        <p class="mb-0 font-weight-normal text-md">
+                                                            <strong>Site: </strong>
+                                                            {{ ticket.user.site.site_name }}
+                                                        </p>
+                                                        <p class="mb-0 font-weight-normal text-md">
+                                                            <strong>Room: </strong>
+                                                            {{ ticket.user.rm_num }}
+                                                        </p>
+                                                        {% else %} N/A {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Ticket Comments Section -->
+                                            <div class="ticket-content-box" id="ticketcomments">
+                                                <div class="card-header">
+                                                    <h5>Comments</h5>
+                                                </div>
+                                                <div class="card-body pt-0">
+                                                    <!-- Display Existing Comments -->
+                                                    <div id="ticket-contents">
+                                                        {% for comment in ticket.contents %}
+                                                        <div class="input-group input-group-outline my-2" readonly>
+                                                            <p><strong>
+                                                                    {% if comment.user %}
+                                                                    {{ comment.user.get_full_name() }} </strong><br>
+                                                                {{ comment.cnt_created_at.strftime('%m-%d-%Y %H:%M') }}
+                                                                {% endif %}
+                                                                <br>
+                                                                {{ comment.content }}
+                                                            </p>
+                                                            <hr>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+
+
+
+
+                                                <!-- Add Comment Button and File Upload -->
+                                                <div class="input-group input-group-outline justify-content-end gap-2">
+                                                    <button type="button" id="add-content" class="btn btn-warning">Add
+                                                        Comments</button>
+                                                </div>
+
+
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+
+                                    <!-- Ticket Attachments Section -->
+                                    <div class="ticket-content-box" id="ticketattachments">
+                                        <div class="row justify-content-center align-items-center">
+                                            <h5>Attachment Files</h5><br>
+                                            <div class="col-sm" style="padding-left: 25px;">
+                                                <div class="input-group-outline my-3">
+                                                    <label for="attachment" class="form-label">Attach Image:</label><br>
+                                                    <input type="file" name="attachment" id="attachment" 
+                                                        class="form-control" accept="image/*" multiple>
+                                                </div>
+                                                <hr>
+
+                                                <!-- Display existing attachments with file names -->
+<!-- In edit_ticket.html -->
+<!-- In the attachments section -->
+{% for attachment in ticket.attachments %}
+<div class="input-group-outline my-3" id="attachment-container-{{ attachment.id }}">
+    <span class="me-2">{{ attachment.attach_image.split('/')[-1] }}</span>
+    
+    <a href="{{ url_for('routes.download_attachment', attachment_id=attachment.id) }}" 
+       class="btn btn-dark btn-sm me-2">
+        <i class="material-symbols-rounded">download</i> Download
+    </a>
+    
+    <!-- Delete button that triggers JavaScript function instead of submitting a form -->
+    <button type="button" class="btn btn-sm btn-danger delete-attachment-btn" 
+            data-attachment-id="{{ attachment.id }}">
+        <i class="fas fa-trash"></i> Delete
+    </button>
+    <hr>
+</div>
+{% endfor %}
+
+
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                    <!-- Submit and Back Buttons -->
+                                    <div class="input-group input-group-outline justify-content-end gap-2">
+                                        {{ form.submit(class="btn bg-gradient-main") }}
+                                        <a class="btn reset-button-box shadow-dark"
+                                            href="{{ url_for('routes.tickets') }}">Back</a>
+                                    </div>
+                                </form>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden input to store username -->
+            <input type="hidden" id="current-username">
+
+                        <!-- JavaScript for Dynamic Comments -->
+<script>
+    document.getElementById('add-content').addEventListener('click', function () {
+        const contentsDiv = document.getElementById('ticket-contents');
+        const username = document.getElementById('current-username').value;
+
+        // Create a new comment input area
+        const newContentDiv = document.createElement('div');
+        newContentDiv.classList.add('input-group', 'input-group-outline', 'my-3');
+        newContentDiv.innerHTML = `
+            <span class="input-group-text">${username}</span>
+            <textarea name="contents-0-content" class="form-control" style="height: 100px;" required></textarea>
+        `;
+
+        // Append the comment input area to the DOM
+        contentsDiv.appendChild(newContentDiv);
+
+        // Disable or hide the Add Comments button
+        const addButton = document.getElementById('add-content');
+        addButton.style.display = 'none'; // Hides the button after one use
+    });
+</script>
+
+
+            <!-- JavaScript for delete attachments -->
+            <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all delete attachment buttons
+    const deleteButtons = document.querySelectorAll('.delete-attachment-btn');
+    
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const attachmentId = this.getAttribute('data-attachment-id');
+            const attachmentContainer = document.getElementById(`attachment-container-${attachmentId}`);
+            const button = this;
+            
+            if(confirm('Are you sure you want to permanently delete this attachment?')) {
+                // Show loading state
+                const originalText = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+                
+                // Create a form programmatically
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/delete_attachment/${attachmentId}`;
+                
+                // Add CSRF token
+                const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+                
+                // Add form to document and submit
+                document.body.appendChild(form);
+                
+                // For debugging
+                console.log(`Submitting delete form for attachment ${attachmentId}`);
+                console.log(`Form action: ${form.action}`);
+                
+                // Submit the form
+                form.submit();
+            }
+        });
+    });
+});
+            </script>
+
+            {% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+    <!-- main content card -->
+<div class="row">
+    <div class="col-12">
+        <div class="main-card-box card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+            <h1 class="text-white text-capitalize ps-3">{{ current_page_name }}</h1>
+          </div>
+          <div class="card-body px-0 pb-2">
+            <br>
+            <div class="table-per-page-section">
+            <div class="row row justify-content-between">
+              <div class="col-4">
+                <form method="get" class="d-flex">
+                  <label for="per_page">Items per page: </label>
+                  <select name="per_page" id="per_page" class="per-page-drop"  onchange="this.form.submit()">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="20" {% if per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                  </select>
+                </form>
+              </div>
+              <div class="col-2 text-end">
+              <a href="{{ url_for('routes.add_title') }}" type="button" class="btn bg-gradient-main add-table-button shadow-dark">Add New Title</a>
+            </div>
+          </div>
+        </div>
+    <!-- pause main content card -->
+
+
+
+
+
+        <!-- main content table -->
+          <div class="table-responsive p-0">
+            <table class="table align-items-right mb-0 table-striped">
+              <thead>
+                <tr>
+                  <th class="text-uppercase text-xxs font-weight-bolder">Ticket Name</th>
+                  <th class="text-uppercase text-xxs font-weight-bolder text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for title in titles %}
+                <tr>
+                  <td>
+                    <div class="d-flex px-2 py-1">
+                      <div class="d-flex flex-column justify-content-center">
+                        <h6 class="mb-0 text-sm">{{ title.title_name }}</h6>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="align-middle">
+                    <div class="d-flex justify-content-end gap-2">
+                      <a href="{{ url_for('routes.edit_title', title_id=title.id) }}" type="button" class="btn table-button-edit font-weight-bold" data-original-title="Edit title">
+                        <i class="material-symbols-rounded position-relative text-lg">edit</i>
+                      </a>
+                      <form action="{{ url_for('routes.delete_title', title_id=title.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the account for {{ title.title_name }}?');">
+                        <button type="submit" data-bs-toggle="tooltip" class="btn table-button-delete font-weight-bold" data-original-title="Delete user role">
+                          <i class="material-symbols-rounded position-relative text-lg">delete</i>
+                        </button>
+                    </form>
+                    </div>
+                  </td>
+                  
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <nav aria-label="Page navigation">
+            <ul class="pagination">
+              <!-- Render pagination links from flask-paginate -->
+              {{ pagination.links }}
+            </ul>
+        <!-- end content table -->
+
+          
+    <!-- continue main content card -->
+  </div>
+</div>
+</div>
+</div>
+<!-- End main content card -->
+
+{% endblock %}
