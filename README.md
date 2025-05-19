@@ -1,14 +1,14 @@
 # AssistITK12
 
-AssistITk12 is a web-based ticketing system designed to help school districts manage support requests, maintenance issues, and other technical problems. It's built with Flask and Bootstrap to provide a user-friendly and efficient solution.
+![AssistITK12 Logo](https://assistitk12.com/wp-content/uploads/2025/05/logo.png) <!-- Add your logo image here -->
 
-![AssistITK12 Logo](path/to/logo.png) <!-- Add your logo image here -->
+AssistITk12 is a web-based ticketing system designed to help school districts manage support requests, maintenance issues, and other technical problems. It's built with Flask and Bootstrap to provide a user-friendly and efficient solution.
 
 ## Features
 
 - **Issue tracking**: Create, manage, and track support tickets.
 - **Prioritization**: Assign priorities to tickets to ensure critical issues are addressed first.
-- **User management**: Create and manage user accounts with different levels of access.
+- **User management**: Create and manage user accounts with different access levels.
 - **Reporting**: Generate reports to track trends and identify areas for improvement.
 - **Customization**: Customize the look and feel of the application to match your school's branding.
 - **Data Visualization**: Generate charts and graphs to visualize common technical issues and trends.
@@ -58,7 +58,7 @@ pip install -r requirements.txt
 
 ### Step 4: Database Setup
 
-1. **Create database**: Create a new MySQL database for AssistITk12. You can do this via a MySQL client (like MySQL Workbench or phpMyAdmin), or via command line:
+1. **Create database**: Create a new MySQL database for AssistITk12. You can do this via a MySQL client (like MySQL Workbench or phpMyAdmin), or command line:
 
    ```sql
    CREATE DATABASE assistitk12;
@@ -123,24 +123,24 @@ Open a web browser and navigate to the URL displayed in your terminal (usually h
 ### Login
 
 Enter the admin email and password you previously configured. 
-- Password must be over 10 characters long, contain letters and numbers, and special characters.
+- Password must be over 10 characters long, and contain letters, numbers, and special characters.
 
 ![Login Screen](path/to/login_screenshot.png) <!-- Add a login screen screenshot here -->
 
 ### Dashboard - Data Visualization
 
-The dashboard provides an overview of all tickets, their statuses, and key metrics to help identify trends and areas for improvement.
+The dashboard provides an overview of all ticket statuses and key metrics to help identify trends and areas for improvement.
 
-![Dashboard](path/to/dashboard_screenshot.png) <!-- Add a dashboard screenshot here -->
+![Dashboard](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-dashboard-scaled.png) <!-- Add a dashboard screenshot here -->
 
 ### Creating a ticket
 
-1. Click on Tickets sidebar
+1. Click on the "Tickets" sidebar button
 1. Click the "Add Ticket" button
 2. Fill in the required details
 3. Click the "Submit Ticket" button
 
-![Create Ticket](path/to/new_ticket_screenshot.png) <!-- Create a new ticket screenshot here -->
+![Create Ticket](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-new-ticket-1536x820.png) <!-- Create a new ticket screenshot here -->
 
 ## Troubleshooting
 ### Database Connection Issues
