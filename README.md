@@ -125,7 +125,7 @@ Open a web browser and navigate to the URL displayed in your terminal (usually h
 Enter the admin email and password you previously configured. 
 - Password must be over 10 characters long, and contain letters, numbers, and special characters.
 
-![Login Screen](path/to/login_screenshot.png) <!-- Add a login screen screenshot here -->
+![Login Screen](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-login.png) <!-- Add a login screen screenshot here -->
 
 ### Dashboard - Data Visualization
 
