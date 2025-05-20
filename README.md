@@ -206,7 +206,7 @@ AssistITk12 is licensed under the GNU General Public License v3. See the LICENSE
 
 ## Contact
 
-For questions or suggestions, please open an issue on GitHub or contact me at assistitk12@victorhugosolis.com.
+For questions or suggestions, please open an issue on GitHub or contact me at contact@victorhugosolis.com.
 
 ## Disclaimer
 
