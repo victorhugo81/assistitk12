@@ -1,16 +1,16 @@
 # AssistITK12
 
-![AssistITK12 Logo](https://assistitk12.com/wp-content/uploads/2025/05/logo.png) <!-- Add your logo image here -->
+![AssistITK12 Logo](https://assistitk12.com/wp-content/uploads/2025/05/logo.png) 
 
 AssistITk12 is a web-based ticketing system designed to help school districts manage support requests, maintenance issues, and other technical problems. It's built with Flask and Bootstrap to provide a user-friendly and efficient solution.
 
-[AssistITk12.com](https://assistitk12.com)
+[AssistITk12.com](https://assistitk12.com) 
 
 ## Features
 
 - **Issue tracking**: Create, manage, and track support tickets.
 - **Prioritization**: Assign priorities to tickets to ensure critical issues are addressed first.
-- **User management**: Create and manage user accounts with different access levels.
+- **User management**: Create and manage user accounts with different levels of access.
 - **Reporting**: Generate reports to track trends and identify areas for improvement.
 - **Customization**: Customize the look and feel of the application to match your school's branding.
 - **Data Visualization**: Generate charts and graphs to visualize common technical issues and trends.
@@ -23,13 +23,15 @@ AssistITk12 is a web-based ticketing system designed to help school districts ma
 
 ## Installation
 
-### Prerequisites
+### Prerequisites Dependencies
 
-- Python 3.12.x
-- MySQL Server
-- Git
+- [Git](https://git-scm.com/downloads/linux)
+- [UV: Ultra fast Python package manager](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
+- [Python 3.12.x](https://docs.astral.sh/uv/concepts/python-versions/#installing-a-python-version)
+- [MySQL Server](https://dev.mysql.com/doc/mysql-getting-started/en/)
 
-### Step 1: Clone the repository
+
+### Step 1: Clone the ASSISTITK12 repository
 
 ```bash
 git clone https://github.com/victorhugo81/assistitk12
@@ -37,36 +39,42 @@ cd assistitk12
 ```
 
 ### Step 2: Set up a virtual environment
-
+Choose the instructions appropriate for your OS.
 **Windows:**
 ```bash
-python -m pip install venv
-python -m venv myenv
-myenv\Scripts\activate
+uv venv .venv
+.venv\Scripts\activate
 ```
 
 **MacOS/Linux:**
 ```bash
-pip install virtualenv
-python3 -m venv myenv
-source myenv/bin/activate
+uv venv .venv
+source .venv/bin/activate
 ```
 
-### Step 3: Install dependencies
+### Step 3:  Initialize UV project and install dependencies
 
 ```bash
-pip install -r requirements.txt
+uv init
+uv pip install -r requirements.txt
 ```
 
-### Step 4: Database Setup
+### Step 4: APP Database Setup
+Important: Don't commit your .env file to version control. Make sure it's added to .gitignore to protect sensitive information!
 
-1. **Create database**: Create a new MySQL database for AssistITk12. You can do this via a MySQL client (like MySQL Workbench or phpMyAdmin), or command line:
+These script creates:
+- Default ticket statuses (Open, In Progress, Completed)
+- Priority levels (Low, Medium, High, Critical)
+- Common issue categories
+- An .env file that contains configuration settings and secrets such as API keys, database credentials, or Flask settings outside your source code.
 
-   ```sql
-   CREATE DATABASE assistitk12;
-   ```
+1. **Create .env file and MySQL database**
+This script will create a file named .env in your project's root directory.
+Edit the generated .env to use your actual database values.
 
-2. **Configure environment variables**: Create a file named `.env` in your project's root directory:
+```bash
+python create_env.py 
+```
 
    ```
    # .env file
@@ -75,46 +83,23 @@ pip install -r requirements.txt
 
    # Database Connection URI
    DATABASE_URL=mysql+pymysql://username:password@localhost/assistitk12
-
-   # Admin user configuration
-   # IMPORTANT: Delete or comment out these lines after creating the admin user
-   DEFAULT_ADMIN_EMAIL=admin@yourdomain.edu
-   DEFAULT_ADMIN_PASSWORD=secure_admin_password
-   DEFAULT_ADMIN_FIRST_NAME=Admin
-   DEFAULT_ADMIN_LAST_NAME=User
    ```
 
-   Replace the placeholders with your actual values.
-
-### Step 5: Initialize the database
-
-Run the Flask application to create the database tables:
-
-```bash
-flask --app main.py run
-```
-
-After the tables are created, stop the application with `Ctrl+C`.
-
-### Step 6: Seed initial data
-
+2. **Seed database with initial app data**
 Run the seed script to populate the database with initial data (including status types, priority levels, and categories):
 
 ```bash
-python seed.py
-```
+python seed_data.py 
+   ```
 
-This script creates:
-- Default ticket statuses (Open, In Progress, Completed)
-- Priority levels (Low, Medium, High, Critical)
-- Common issue categories
-- The admin user specified in your `.env` file
 
-### Step 7: Run the application
+### Step 5: Start Flask development server
 
 ```bash
 flask --app main.py run
 ```
+
+
 
 ## Usage
 
@@ -124,20 +109,20 @@ Open a web browser and navigate to the URL displayed in your terminal (usually h
 
 ### Login
 
-Enter the admin email and password you previously configured. 
-- Password must be over 10 characters long, and contain letters, numbers, and special characters.
+Enter the admin email and password you previously configured.
+- Password must be over 10 characters long, contain letters and numbers, and special characters.
 
 ![Login Screen](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-login.png) <!-- Add a login screen screenshot here -->
 
 ### Dashboard - Data Visualization
 
-The dashboard provides an overview of all ticket statuses and key metrics to help identify trends and areas for improvement.
+The dashboard provides an overview of all tickets, their statuses, and key metrics to help identify trends and areas for improvement.
 
 ![Dashboard](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-dashboard-scaled.png) <!-- Add a dashboard screenshot here -->
 
 ### Creating a ticket
 
-1. Click on the "Tickets" sidebar button
+1. Click on Tickets sidebar
 1. Click the "Add Ticket" button
 2. Fill in the required details
 3. Click the "Submit Ticket" button
@@ -164,7 +149,7 @@ flask db upgrade
 If you encounter missing module errors:
 
 ```bash
-pip install -r requirements.txt --upgrade
+uv pip install -r requirements.txt --upgrade
 ```
 
 ## Production Deployment
@@ -206,8 +191,59 @@ AssistITk12 is licensed under the GNU General Public License v3. See the LICENSE
 
 ## Contact
 
-For questions or suggestions, please open an issue on GitHub or contact me at contact@victorhugosolis.com.
+For questions or suggestions, please open an issue on GitHub or contact me at assistitk12@victorhugosolis.com.
 
 ## Disclaimer
 
 AssistITk12 is still under development and may contain bugs or limitations. We are committed to improving the software and welcome your feedback.
+
+## Project Structure Tree
+
+```
+assistitk12/
+├── application/
+│   ├── __init__.py
+│   ├── models.py
+│   ├── forms.py
+│   ├── routes.py
+│   ├── static/
+│   │   ├── css/
+│   │   ├── js/
+│   │   ├── img/
+│   │   └── uploads/
+│   └── templates/
+│       ├── includes/
+│       │   ├── footer.html
+│       │   └── nav.html
+│       ├── add_notification.html
+│       ├── add_role.html
+│       ├── add_site.html
+│       ├── add_ticket.html
+│       ├── add_title.html
+│       ├── add_user.html
+│       ├── base.html
+│       ├── edit_notification.html
+│       ├── edit_role.html
+│       ├── edit_site.html
+│       ├── edit_ticket.html
+│       ├── edit_title.html
+│       ├── edit_user.html
+│       ├── error.html
+│       ├── index.html
+│       ├── login.html
+│       ├── notification.html
+│       ├── organization.html
+│       ├── profile.html
+│       ├── roles.html
+│       ├── sites.html
+│       ├── tickets.html
+│       ├── titles.html
+│       └── users.html
+├── main.py
+├── config.py
+├── requirements.txt
+└── installation/
+    ├── create_env.py
+    └── seed_data.py
+```
+
