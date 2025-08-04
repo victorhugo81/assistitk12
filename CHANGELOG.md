@@ -34,5 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Installation scripts (`create_env.py`, `seed_data.py`).
 - Updated documentation for setup and usage with UV
+- Update .gitignore file
 
 ---

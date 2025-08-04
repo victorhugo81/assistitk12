@@ -1,12 +1,34 @@
-.env
-*.pyc
-__pycache__/
-instance/
-myenv/
-.DS_Store
-attachments/
+# ***********************************
+# Virtual environment
+.venv/
 
-*.log
-*.pot
-*.po
-*.pyo
+# Environment variables
+.env
+
+# Pyenv local version
+.python-version
+
+# Bytecode
+__pycache__/
+*.py[cod]
+
+# VS Code settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# misc files and directories
+attachments/
+instance/
+
+# ***********************************
+
+
+# ***********************************
+# don't ignore in your project
+
+# defines your project's name, version, and dependencies
+.toml
+# ***********************************

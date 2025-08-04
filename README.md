@@ -35,6 +35,8 @@ AssistITk12 is a web-based ticketing system designed to help school districts ma
 
 ```bash
 git clone https://github.com/victorhugo81/assistitk12
+```
+```bash
 cd assistitk12
 ```
 
@@ -43,12 +45,16 @@ Choose the instructions appropriate for your OS.
 **Windows:**
 ```bash
 uv venv .venv
+```
+```bash
 .venv\Scripts\activate
 ```
 
 **MacOS/Linux:**
 ```bash
 uv venv .venv
+```
+```bash
 source .venv/bin/activate
 ```
 
@@ -56,6 +62,8 @@ source .venv/bin/activate
 
 ```bash
 uv init
+```
+```bash
 uv pip install -r requirements.txt
 ```
 
@@ -71,7 +79,9 @@ These script creates:
 1. **Create .env file and MySQL database**
 This script will create a file named .env in your project's root directory.
 Edit the generated .env to use your actual database values.
-
+```bash
+cd installation
+```
 ```bash
 python create_env.py 
 ```
@@ -94,7 +104,9 @@ python seed_data.py
 
 
 ### Step 5: Start Flask development server
-
+```bash
+cd ..
+```
 ```bash
 flask --app main.py run
 ```
