@@ -2,6 +2,18 @@
 # Virtual environment
 .venv/
 
+# Flask instance folder
+instance/
+
+# Flask cache
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Flask logs
+*.log
+
 # Environment variables
 .env
 
@@ -21,14 +33,3 @@ Thumbs.db
 
 # misc files and directories
 attachments/
-instance/
-
-# ***********************************
-
-
-# ***********************************
-# don't ignore in your project
-
-# defines your project's name, version, and dependencies
-.toml
-# ***********************************

@@ -96,7 +96,7 @@ with app.app_context():
                 status='Active',
                 rm_num='999',
                 site_id=1,
-                role_id=1
+                role_id=99
             ))
             print("✅ Admin user created.")
 
