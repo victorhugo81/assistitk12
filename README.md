@@ -61,10 +61,7 @@ source .venv/bin/activate
 ### Step 3:  Initialize UV project and install dependencies
 
 ```bash
-uv init
-```
-```bash
-uv pip install -r requirements.txt
+uv sync
 ```
 
 ### Step 4: APP Database Setup

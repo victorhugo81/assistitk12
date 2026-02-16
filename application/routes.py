@@ -1206,7 +1206,7 @@ def add_ticket():
         ticket = Ticket(
             title_id=form.title_id.data,
             tck_status="1-pending",  # Ensure it's always 'Pending'
-            assigned_to_id= "99",  # Save assigned user
+            assigned_to_id= "1",  # Save assigned user
             escalated = 0,
             user_id=current_user.id,
             site_id=site_id,  # Assign site_id directly from current_user
