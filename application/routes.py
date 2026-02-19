@@ -196,20 +196,17 @@ def change_password():
             return jsonify({"success": False, "message": "User not found"}), 404
             
         # Verify current password is correct
-        if not check_password_hash(user.password_hash, current_password):
+        if not check_password_hash(user.password, current_password):
             # Use consistent timing to prevent timing attacks
-            from time import sleep
-            sleep(0.5)  # Small delay to prevent rapid guessing
+            # from time import sleep
+            # sleep(0.5)  # Small delay to prevent rapid guessing
             return jsonify({"success": False, "message": "Current password is incorrect"}), 401
             
         # Hash the new password using werkzeug security functions
         password_hash = generate_password_hash(new_password, method='pbkdf2:sha256:150000')
         
         # Update the password in the database
-        user.password_hash = password_hash
-        
-        # Add password change timestamp for auditing purposes
-        user.password_changed_at = datetime.utcnow()
+        user.password = password_hash
         
         # Commit the changes to the database
         db.session.commit()
