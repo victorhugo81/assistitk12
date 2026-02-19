@@ -1449,6 +1449,8 @@ def edit_ticket(ticket_id):
                     user_id=current_user.id
                 )
                 db.session.add(new_attachment)
+                changes_made = True
+                flash('Attachment added successfully!', 'success')
                 
             except Exception as e:
                 flash(f'Failed to save attachment: {str(e)}', 'error')
@@ -1458,18 +1460,18 @@ def edit_ticket(ticket_id):
                 return redirect(request.url)
 
 
-            # Ensure the new attachment is added only if it's different
-            existing_attachment = Ticket_attachment.query.filter_by(ticket_id=ticket.id, attach_image=new_filename).first()
-            if not existing_attachment:
-                new_attachment = Ticket_attachment(
-                    ticket_id=ticket.id,
-                    attach_image=new_filename,
-                    uploaded_at=datetime.utcnow(),
-                    user_id=current_user.id
-                )
-                db.session.add(new_attachment)
-                changes_made = True
-                flash('Attachment added successfully!', 'success')
+            # # Ensure the new attachment is added only if it's different
+            # existing_attachment = Ticket_attachment.query.filter_by(ticket_id=ticket.id, attach_image=new_filename).first()
+            # if not existing_attachment:
+            #     new_attachment = Ticket_attachment(
+            #         ticket_id=ticket.id,
+            #         attach_image=new_filename,
+            #         uploaded_at=datetime.utcnow(),
+            #         user_id=current_user.id
+            #     )
+            #     db.session.add(new_attachment)
+            #     changes_made = True
+            #     flash('Attachment added successfully!', 'success')
 
         # Add ticket contents (text-based)
         new_comments = [
