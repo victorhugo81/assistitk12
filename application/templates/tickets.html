@@ -193,6 +193,7 @@
         <!-- Admin-Only Items -->
         {% if current_user.is_admin %}
             <form action="{{ url_for('routes.delete_ticket', ticket_id=ticket.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the ticket {{ ticket.title.title_name }}?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" data-bs-toggle="tooltip" class="btn table-button-delete font-weight-bold" data-original-title="Delete ticket">
                 <i class="material-symbols-rounded position-relative text-lg">delete</i>
               </button>

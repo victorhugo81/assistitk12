@@ -5,7 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment
 from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, TicketForm, TitleForm, TicketContentForm
-from main import db, login_manager, csrf
+from main import db, login_manager
 from datetime import datetime, timedelta, timezone
 import time, os, re, csv, logging
 from sqlalchemy.sql import func
@@ -1312,8 +1312,7 @@ def download_attachment(attachment_id):
 @routes_blueprint.route('/delete_attachment/<int:attachment_id>', methods=['POST'])
 @login_required
 def delete_attachment(attachment_id):
-    """Delete an attachment from a ticket."""
-    print(f"DELETE ATTACHMENT ROUTE HIT: Attachment ID {attachment_id}, User {current_user.id}")
+    current_app.logger.info(f"Delete attachment request - Attachment ID: {attachment_id}, User: {current_user.id}")
     
     # Find attachment
     attachment = Ticket_attachment.query.get(attachment_id)
@@ -1342,18 +1341,18 @@ def delete_attachment(attachment_id):
         
         # Get filepath
         file_path = os.path.join(current_app.config['UPLOAD_ATTACHMENT'], filename)
-        print(f"File path: {file_path}")
+        current_app.logger.debug(f"Attempting to delete file: {file_path}")
         
         # Delete physical file if it exists
         if os.path.exists(file_path):
             os.remove(file_path)
-            print(f"File deleted: {file_path}")
+            current_app.logger.info(f"File deleted successfully: {file_path}")
         
         # Delete database record
         db.session.delete(attachment)
         ticket.updated_at = datetime.utcnow()  # Update ticket timestamp
         db.session.commit()
-        print(f"Database record deleted for attachment {attachment_id}")
+        current_app.logger.info(f"Attachment {attachment_id} deleted from database")
         
         flash('Attachment deleted successfully.', 'success')
     except Exception as e:
@@ -1505,18 +1504,18 @@ def edit_ticket(ticket_id):
 # ****************** Delete Ticket Page *******************************
 @routes_blueprint.route('/delete_ticket/<int:ticket_id>', methods=['POST'])
 @login_required
-@csrf.exempt
+# @csrf.exempt
 def delete_ticket(ticket_id):
     is_admin()  # Ensure only admins can access this route
     ticket = Ticket.query.get_or_404(ticket_id)
 
     try:
-        # Debug: Print ticket info
-        print(f"Deleting ticket ID: {ticket_id}")
+        # Log ticket deletion
+        current_app.logger.info(f"Deleting ticket ID: {ticket_id} by user: {current_user.id}")
         
         # Get all attachments for this ticket
         attachments = Ticket_attachment.query.filter_by(ticket_id=ticket_id).all()
-        print(f"Found {len(attachments)} attachments to delete")
+        current_app.logger.debug(f"Found {len(attachments)} attachments to delete for ticket {ticket_id}")
 
         for attachment in attachments:
             if attachment.attach_image:
@@ -1525,33 +1524,34 @@ def delete_ticket(ticket_id):
                 
                 # Construct full file path
                 file_path = os.path.join(current_app.config['UPLOAD_ATTACHMENT'], filename)
-                print(f"Attempting to delete file at: {file_path}")
+                current_app.logger.debug(f"Attempting to delete file: {file_path}")
                 
                 # Verify and delete file
                 if os.path.exists(file_path):
                     try:
                         os.remove(file_path)
-                        print(f"Successfully deleted file: {file_path}")
+                        current_app.logger.info(f"File deleted successfully: {file_path}")
                     except OSError as e:
-                        print(f"Error deleting file {file_path}: {str(e)}")
+                        current_app.logger.error(f"Error deleting file {file_path}: {str(e)}")
                         raise  # Re-raise to trigger rollback
                 else:
-                    print(f"File not found at: {file_path} (may have been deleted already)")
+                    current_app.logger.warning(f"File not found: {file_path} (may have been deleted already)")
                 
                 # Delete attachment record
                 db.session.delete(attachment)
-                print(f"Marked attachment {attachment.id} for deletion")
+                current_app.logger.debug(f"Attachment {attachment.id} marked for deletion")
 
         # Delete the ticket
         db.session.delete(ticket)
         db.session.commit()
+        current_app.logger.info(f"Ticket {ticket_id} and attachments deleted successfully")
         
         flash('Ticket and all attachments deleted successfully', 'success')
         return redirect(url_for('routes.tickets'))
         
     except Exception as e:
         db.session.rollback()
-        print(f"ERROR in delete_ticket: {str(e)}", exc_info=True)
+        current_app.logger.error(f"Error deleting ticket {ticket_id}: {str(e)}", exc_info=True)
         flash(f'Failed to delete ticket: {str(e)}', 'danger')
         return redirect(url_for('routes.tickets'))
 
