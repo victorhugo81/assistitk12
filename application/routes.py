@@ -660,7 +660,7 @@ def edit_user(user_id):
 # ****************** Delete User Page *******************************
 @routes_blueprint.route('/delete_user/<int:user_id>', methods=['POST'])
 @login_required
-@csrf.exempt  # Optional: Exempt from CSRF if needed
+# @csrf.exempt  # Optional: Exempt from CSRF if needed
 def delete_user(user_id):
     is_admin()  # Ensure only admins can access this route
     user = User.query.get_or_404(user_id)
@@ -674,7 +674,7 @@ def delete_user(user_id):
 # ****************** Import Bulk Users *******************************
 @routes_blueprint.route('/bulk-upload-users', methods=['POST'])
 @login_required
-@csrf.exempt  # Optional: Exempt from CSRF if needed
+# @csrf.exempt  # Optional: Exempt from CSRF if needed
 def bulk_upload_users():
     is_admin()  # Ensure only admins can access this route
 
@@ -831,7 +831,7 @@ def edit_role(role_id):
 # ****************** Delete Role Page *******************************
 @routes_blueprint.route('/delete_role/<int:role_id>', methods=['POST'])
 @login_required
-@csrf.exempt  # Optional: Exempt from CSRF if needed
+# @csrf.exempt  # Optional: Exempt from CSRF if needed
 def delete_role(role_id):
     is_admin()  # Ensure only admins can access this route
 
@@ -945,7 +945,7 @@ def edit_site(site_id):
 # ****************** Delete Site Page *******************************
 @routes_blueprint.route('/delete_site/<int:site_id>', methods=['POST'])
 @login_required
-@csrf.exempt  # Optional: Exempt from CSRF if needed
+# @csrf.exempt  # Optional: Exempt from CSRF if needed
 def delete_site(site_id):
     is_admin()  # Ensure only admins can access this route
     site = Site.query.get_or_404(site_id)
@@ -1061,7 +1061,7 @@ def edit_notification(notification_id):
 # ****************** Delete Notification Page *********************
 @routes_blueprint.route('/delete_notification/<int:notification_id>', methods=['POST'])
 @login_required
-@csrf.exempt  # Optional: Exempt from CSRF if needed
+# @csrf.exempt  # Optional: Exempt from CSRF if needed
 def delete_notification(notification_id):
     is_admin()  # Ensure only admins can access this route
     notification = Notification.query.get_or_404(notification_id)
@@ -1199,11 +1199,13 @@ def add_ticket():
     if form.validate_on_submit():
         # Ensure site_id is set based on the logged-in user's site_id
         site_id = current_user.site_id  # Use current user's site_id directly
+        # Find a user with role_id=3 in the same site to auto-assign
+        assignee = User.query.filter_by(role_id=3, site_id=site_id).first()
         # Create new ticket
         ticket = Ticket(
             title_id=form.title_id.data,
             tck_status="1-pending",  # Ensure it's always 'Pending'
-            assigned_to_id= "1",  # Save assigned user
+            assigned_to_id=assignee.id if assignee else None,
             escalated = 0,
             user_id=current_user.id,
             site_id=site_id,  # Assign site_id directly from current_user
@@ -1635,7 +1637,7 @@ def edit_title(title_id):
 # ****************** Delete Title Page *******************************
 @routes_blueprint.route('/delete_title/<int:title_id>', methods=['POST'])
 @login_required
-@csrf.exempt  # Optional: Exempt from CSRF if needed
+# @csrf.exempt  # Optional: Exempt from CSRF if needed
 def delete_title(title_id):
     is_admin()  # Ensure only admins can access this route
     title = Title.query.get_or_404(title_id)
