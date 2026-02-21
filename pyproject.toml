@@ -10,6 +10,7 @@ dependencies = [
     "email-validator>=2.3.0",
     "flask>=3.1.2",
     "flask-caching>=2.3.1",
+    "flask-mail>=0.10.0",
     "flask-login>=0.6.3",
     "flask-migrate>=4.1.0",
     "flask-paginate>=2024.4.12",

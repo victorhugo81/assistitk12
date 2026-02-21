@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment
 from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, TicketForm, TitleForm, TicketContentForm
 from .utils import validate_password, validate_file_upload
+from .email_utils import send_ticket_notification
 from main import db, login_manager
 from datetime import datetime, timedelta, timezone
 import time, os, re, csv, logging
@@ -1253,6 +1254,7 @@ def add_ticket():
 
         # Commit all changes at once
         db.session.commit()
+        send_ticket_notification('created', ticket)
         flash('Ticket created successfully!', 'success')
         return redirect(url_for('routes.tickets'))
     
@@ -1361,6 +1363,11 @@ def edit_ticket(ticket_id):
     if form.validate_on_submit():
         changes_made = False
 
+        # Capture old values before any changes for email notifications
+        old_status = ticket.tck_status
+        old_assigned_to_id = ticket.assigned_to_id
+        old_escalated = bool(ticket.escalated)
+
         # Check for changes in ticket fields
         if ticket.title_id != form.title_id.data:
             ticket.title_id = form.title_id.data
@@ -1467,6 +1474,20 @@ def edit_ticket(ticket_id):
             ticket.updated_at = datetime.now(timezone.utc)
             db.session.add(ticket)
             db.session.commit()
+
+            # Send email notifications for each change
+            if ticket.tck_status != old_status:
+                send_ticket_notification('status', ticket,
+                                         old_status=old_status,
+                                         new_status=ticket.tck_status)
+            if ticket.assigned_to_id != old_assigned_to_id:
+                new_assignee = User.query.get(ticket.assigned_to_id) if ticket.assigned_to_id else None
+                send_ticket_notification('assigned', ticket, new_assignee=new_assignee)
+            if bool(ticket.escalated) != old_escalated:
+                send_ticket_notification('escalated', ticket, escalated=bool(ticket.escalated))
+            if new_comments:
+                send_ticket_notification('comment', ticket, commenter=current_user)
+
             flash('Ticket updated successfully!', 'success')
         else:
             flash('No changes detected to update.', 'warning')

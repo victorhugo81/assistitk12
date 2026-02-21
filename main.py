@@ -4,12 +4,14 @@ from flask_wtf.csrf import CSRFProtect
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_mail import Mail
 from config import config
 
 # Initialize global extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
 csrf = CSRFProtect()
+mail = Mail()
 
 
 @login_manager.user_loader
@@ -36,6 +38,7 @@ def create_app(config_name='default'):
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
+    mail.init_app(app)
     login_manager.login_view = "routes.login"
 
     migrate = Migrate(app, db)
