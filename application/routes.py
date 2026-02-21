@@ -4,10 +4,11 @@ from flask_paginate import Pagination, get_page_args
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment
-from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, TicketForm, TitleForm, TicketContentForm
-from .utils import validate_password, validate_file_upload
+from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, EmailConfigForm, TicketForm, TitleForm, TicketContentForm
+from .utils import validate_password, validate_file_upload, encrypt_mail_password, decrypt_mail_password
 from .email_utils import send_ticket_notification
-from main import db, login_manager
+from main import db, login_manager, mail
+from flask_mail import Message
 from datetime import datetime, timedelta, timezone
 import time, os, re, csv, logging
 from sqlalchemy.sql import func
@@ -251,6 +252,10 @@ def organization():
     # Initialize form with current organization data
     form = OrganizationForm(obj=organization)
 
+    # Initialize email config form (pre-populate from DB, but never show password)
+    email_form = EmailConfigForm(obj=organization)
+    email_form.mail_password.data = ''
+
     if form.validate_on_submit():
         # Check for duplicate organization names (excluding the current one)
         existing_organization = Organization.query.filter(
@@ -259,22 +264,23 @@ def organization():
         ).first()
 
         if existing_organization:
-            flash('An organization with that name already exists.', 'danger') 
-            return render_template('organization.html', form=form, organization=organization)
+            flash('An organization with that name already exists.', 'danger')
+            return render_template('organization.html', form=form, email_form=email_form, organization=organization)
 
         # Update organization with form data
         organization.organization_name = form.organization_name.data
         organization.site_version = form.site_version.data
         db.session.commit()  # Save changes to database
-        
+
         flash('Organization updated successfully!', 'success')
         return redirect(url_for('routes.organization'))
 
     # For GET requests or invalid form submissions, display the form
-    return render_template('organization.html', 
-                          form=form, 
+    return render_template('organization.html',
+                          form=form,
+                          email_form=email_form,
                           organization=organization,
-                          current_path=current_path, 
+                          current_path=current_path,
                           current_page_name=current_page_name)
 
 # *****************************************************************
@@ -282,6 +288,82 @@ def organization():
 # -------------- Do not change this section --------------
 # *****************************************************************
 
+
+# ****************** Email Configuration *******************************
+@routes_blueprint.route('/email-config', methods=['POST'])
+@login_required
+def email_config():
+    """
+    Save Flask-Mail SMTP configuration from the organization settings page.
+    Updates the Organization record and immediately applies settings to the running app.
+    """
+    is_admin()
+    organization = Organization.query.get_or_404(1)
+    email_form = EmailConfigForm()
+
+    if email_form.validate_on_submit():
+        organization.mail_server = email_form.mail_server.data or None
+        organization.mail_port = email_form.mail_port.data or None
+        organization.mail_use_tls = email_form.mail_use_tls.data
+        organization.mail_use_ssl = email_form.mail_use_ssl.data
+        organization.mail_username = email_form.mail_username.data or None
+        if email_form.mail_password.data:
+            organization.mail_password = encrypt_mail_password(
+                email_form.mail_password.data, current_app.config['SECRET_KEY']
+            )
+        organization.mail_default_sender = email_form.mail_default_sender.data or None
+        db.session.commit()
+
+        # Apply updated settings to the running Flask-Mail instance
+        current_app.config['MAIL_SERVER'] = organization.mail_server or 'localhost'
+        current_app.config['MAIL_PORT'] = organization.mail_port or 587
+        current_app.config['MAIL_USE_TLS'] = bool(organization.mail_use_tls)
+        current_app.config['MAIL_USE_SSL'] = bool(organization.mail_use_ssl)
+        current_app.config['MAIL_USERNAME'] = organization.mail_username
+        current_app.config['MAIL_PASSWORD'] = decrypt_mail_password(
+            organization.mail_password or '', current_app.config['SECRET_KEY']
+        )
+        current_app.config['MAIL_DEFAULT_SENDER'] = organization.mail_default_sender
+        mail.init_app(current_app)
+
+        flash('Email settings updated successfully!', 'success')
+    else:
+        for field, errors in email_form.errors.items():
+            for error in errors:
+                flash(f'{field}: {error}', 'danger')
+
+    return redirect(url_for('routes.organization'))
+
+
+# ****************** Test Email *******************************
+@routes_blueprint.route('/email-config/test', methods=['POST'])
+@login_required
+def test_email():
+    """
+    Send a test email to verify the current Flask-Mail configuration.
+    Returns JSON with success/error details.
+    """
+    is_admin()
+    recipient = request.form.get('test_recipient', '').strip()
+    if not recipient:
+        return jsonify({'success': False, 'message': 'Recipient email is required.'}), 400
+
+    try:
+        msg = Message(
+            subject='Test Email – AssistITK12',
+            recipients=[recipient],
+            body=(
+                'This is a test email sent from AssistITK12.\n\n'
+                'Your email configuration is working correctly.\n\n'
+                '— AssistITK12 System'
+            )
+        )
+        mail.send(msg)
+        current_app.logger.info(f"Test email sent to {recipient} by user {current_user.id}")
+        return jsonify({'success': True, 'message': f'Test email sent to {recipient}.'})
+    except Exception as e:
+        current_app.logger.error(f"Test email failed: {type(e).__name__}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 # *****************************************************************

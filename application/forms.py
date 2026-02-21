@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, FieldList, FormField, BooleanField, RadioField, DateTimeField
+from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, FieldList, FormField, BooleanField, RadioField, DateTimeField, IntegerField
 from wtforms.validators import DataRequired, Email, Length, Optional
 from flask_wtf.file import FileField, FileRequired, FileAllowed
 from datetime import datetime
@@ -52,6 +52,17 @@ class OrganizationForm(FlaskForm):
     organization_name = StringField('Organization Name', validators=[DataRequired()])
     site_version = StringField('Site Version', validators=[DataRequired()])
     submit = SubmitField('Save Settings')
+
+
+class EmailConfigForm(FlaskForm):
+    mail_server = StringField('SMTP Server', validators=[Optional()])
+    mail_port = IntegerField('SMTP Port', validators=[Optional()])
+    mail_use_tls = BooleanField('Use TLS (STARTTLS)')
+    mail_use_ssl = BooleanField('Use SSL')
+    mail_username = StringField('Username / Email', validators=[Optional()])
+    mail_password = PasswordField('Password', validators=[Optional()])
+    mail_default_sender = StringField('Default Sender Email', validators=[Optional(), Email()])
+    submit_email = SubmitField('Save Email Settings')
 
 
 class TicketContentForm(FlaskForm):

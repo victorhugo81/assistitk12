@@ -3,7 +3,33 @@ Utility functions for the AssistITK12 application.
 Contains reusable validation and helper functions.
 """
 import re
+import hashlib
+import base64
 from typing import Tuple, Optional
+from cryptography.fernet import Fernet, InvalidToken
+
+
+def _get_fernet(secret_key: str) -> Fernet:
+    """Derive a Fernet instance from the app SECRET_KEY."""
+    key = base64.urlsafe_b64encode(hashlib.sha256(secret_key.encode()).digest())
+    return Fernet(key)
+
+
+def encrypt_mail_password(password: str, secret_key: str) -> str:
+    """Encrypt a plain-text SMTP password for storage in the database."""
+    if not password:
+        return ''
+    return _get_fernet(secret_key).encrypt(password.encode()).decode()
+
+
+def decrypt_mail_password(encrypted: str, secret_key: str) -> str:
+    """Decrypt a stored SMTP password. Returns '' on failure."""
+    if not encrypted:
+        return ''
+    try:
+        return _get_fernet(secret_key).decrypt(encrypted.encode()).decode()
+    except InvalidToken:
+        return ''
 
 
 def validate_password(password: str, min_length: int = 12) -> Tuple[bool, Optional[str]]:

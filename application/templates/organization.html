@@ -4,7 +4,7 @@
 
     <!-- main content card -->
 <div class="row">
-    <div class="col-12">        
+    <div class="col-12">
         <div class="main-card-box card my-4">
         <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
           <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
@@ -18,15 +18,16 @@
     <!-- pause main content card -->
 
 
-            
-    <!-- form -->
+
+    <!-- General Settings form -->
     <div class="card-body align-items-center">
         <div class="container-md align-items-center">
+            <h5 class="mb-3">General Settings</h5>
             <form method="POST" action="{{ url_for('routes.organization', organization_id=organization.id) }}">
               {{ form.csrf_token }}
                 <div class="input-group input-group-outline my-3">
                     {{ form.organization_name.label }}
-                    {{ form.organization_name(class="form-control") }} 
+                    {{ form.organization_name(class="form-control") }}
                 </div>
                 <div class="input-group input-group-outline my-3">
                     {{ form.site_version.label(class="form-label") }}
@@ -37,10 +38,91 @@
                     <a type="button" class="btn reset-button-box shadow-dark" href="{{ url_for('routes.organization') }}">Back</a>
                 </div>
             </form>
-</div>
-</div>
-<!-- End form -->
+        </div>
+    </div>
+    <!-- End General Settings form -->
 
+    <hr class="mx-4">
+
+    <!-- Email Configuration form -->
+    <div class="card-body align-items-center">
+        <div class="container-md align-items-center">
+            <h5 class="mb-1">Email Configuration (Flask-Mail)</h5>
+            <p class="text-sm text-muted mb-3">Configure the SMTP settings used to send ticket notifications. TLS and SSL are mutually exclusive — use TLS (port 587) or SSL (port 465), not both.</p>
+            <form method="POST" action="{{ url_for('routes.email_config') }}">
+              {{ email_form.csrf_token }}
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="input-group input-group-outline my-3">
+                            {{ email_form.mail_server.label }}
+                            {{ email_form.mail_server(class="form-control", placeholder="e.g. smtp.gmail.com") }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-outline my-3">
+                            {{ email_form.mail_port.label }}
+                            {{ email_form.mail_port(class="form-control", placeholder="e.g. 587 or 465") }}
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group input-group-outline my-3">
+                            {{ email_form.mail_username.label }}
+                            {{ email_form.mail_username(class="form-control", placeholder="sender@example.com") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group input-group-outline my-3">
+                            {{ email_form.mail_password.label }}
+                            {{ email_form.mail_password(class="form-control", placeholder="Leave blank to keep existing password") }}
+                        </div>
+                    </div>
+                </div>
+                <div class="input-group input-group-outline my-3">
+                    {{ email_form.mail_default_sender.label }}
+                    {{ email_form.mail_default_sender(class="form-control", placeholder="sender@example.com") }}
+                </div>
+                <div class="d-flex gap-4 my-3">
+                    <div class="form-check">
+                        {{ email_form.mail_use_tls(class="form-check-input") }}
+                        {{ email_form.mail_use_tls.label(class="form-check-label") }}
+                    </div>
+                    <div class="form-check">
+                        {{ email_form.mail_use_ssl(class="form-check-input") }}
+                        {{ email_form.mail_use_ssl.label(class="form-check-label") }}
+                    </div>
+                </div>
+                <div class="input-group input-group-outline justify-content-end gap-2">
+                    {{ email_form.submit_email(class="btn bg-gradient-dark") }}
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- End Email Configuration form -->
+
+    <hr class="mx-4">
+
+    <!-- Test Email -->
+    <div class="card-body align-items-center">
+        <div class="container-md align-items-center">
+            <h5 class="mb-1">Send Test Email</h5>
+            <p class="text-sm text-muted mb-3">Verify your SMTP configuration by sending a test email.</p>
+            <div class="row align-items-end">
+                <div class="col-md-6">
+                    <div class="input-group input-group-outline my-3">
+                        <label class="form-label">Recipient Email</label>
+                        <input type="email" id="testRecipient" class="form-control" placeholder="recipient@example.com">
+                    </div>
+                </div>
+                <div class="col-md-auto mb-3">
+                    <button type="button" class="btn bg-gradient-info" id="sendTestEmail">Send Test Email</button>
+                </div>
+            </div>
+            <div id="testEmailResult" class="mt-2" style="display:none;"></div>
+        </div>
+    </div>
+    <!-- End Test Email -->
 
 
 
@@ -50,5 +132,49 @@
 </div>
 </div>
 <!-- End main content card -->
+
+<script>
+document.getElementById('sendTestEmail').addEventListener('click', function () {
+    var recipient = document.getElementById('testRecipient').value.trim();
+    var resultDiv = document.getElementById('testEmailResult');
+
+    if (!recipient) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="alert alert-warning">Please enter a recipient email address.</div>';
+        return;
+    }
+
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    resultDiv.style.display = 'none';
+
+    var formData = new FormData();
+    formData.append('test_recipient', recipient);
+    formData.append('csrf_token', '{{ email_form.csrf_token._value() }}');
+
+    fetch('{{ url_for("routes.test_email") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+        resultDiv.style.display = 'block';
+        if (data.success) {
+            resultDiv.innerHTML = '<div class="alert alert-success">' + data.message + '</div>';
+        } else {
+            resultDiv.innerHTML = '<div class="alert alert-danger">' + data.message + '</div>';
+        }
+    })
+    .catch(function (err) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="alert alert-danger">An unexpected error occurred.</div>';
+    })
+    .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Send Test Email';
+    });
+});
+</script>
 
 {% endblock %}

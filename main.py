@@ -46,6 +46,30 @@ def create_app(config_name='default'):
     # Register blueprint
     from application.routes import routes_blueprint
     app.register_blueprint(routes_blueprint)
+
+    # Override Flask-Mail config with any settings stored in the database.
+    # This ensures ticket notifications use the admin-configured SMTP settings
+    # on every startup, not just after the settings form is saved.
+    with app.app_context():
+        try:
+            from application.models import Organization
+            from application.utils import decrypt_mail_password
+            org = Organization.query.get(1)
+            if org and org.mail_server:
+                app.config['MAIL_SERVER'] = org.mail_server
+                if org.mail_port:
+                    app.config['MAIL_PORT'] = org.mail_port
+                app.config['MAIL_USE_TLS'] = bool(org.mail_use_tls)
+                app.config['MAIL_USE_SSL'] = bool(org.mail_use_ssl)
+                app.config['MAIL_USERNAME'] = org.mail_username
+                app.config['MAIL_PASSWORD'] = decrypt_mail_password(
+                    org.mail_password or '', app.config['SECRET_KEY']
+                )
+                app.config['MAIL_DEFAULT_SENDER'] = org.mail_default_sender
+                mail.init_app(app)
+        except Exception:
+            pass  # DB not ready on first run — env var defaults remain active
+
     return app
 
 if __name__ == "__main__":

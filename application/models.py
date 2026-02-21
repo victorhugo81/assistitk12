@@ -8,6 +8,14 @@ class Organization(db.Model):
     organization_name = db.Column(db.String(100), nullable=False)
     site_version = db.Column(db.String(100), nullable=False)
     organization_logo = db.Column(db.String(100), nullable=True)
+    # Flask-Mail configuration
+    mail_server = db.Column(db.String(255), nullable=True)
+    mail_port = db.Column(db.Integer, nullable=True)
+    mail_use_tls = db.Column(db.Boolean, default=False, nullable=True)
+    mail_use_ssl = db.Column(db.Boolean, default=False, nullable=True)
+    mail_username = db.Column(db.String(255), nullable=True)
+    mail_password = db.Column(db.String(255), nullable=True)
+    mail_default_sender = db.Column(db.String(255), nullable=True)
 
 
 class Notification(db.Model):

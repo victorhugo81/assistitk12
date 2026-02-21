@@ -122,4 +122,4 @@ def send_ticket_notification(event, ticket, **kwargs):
             current_app.logger.info(f"Ticket notification '{event}' sent to {recipients}")
 
     except Exception as e:
-        current_app.logger.error(f"Failed to send ticket notification (event={event}): {e}")
+        current_app.logger.error(f"Failed to send ticket notification (event={event}): {type(e).__name__}: {e}", exc_info=True)

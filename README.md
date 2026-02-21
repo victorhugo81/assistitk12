@@ -90,14 +90,6 @@ python create_env.py
 
    # Database Connection URI
    DATABASE_URL=mysql+pymysql://username:password@localhost/assistitk12
-
-      # Email (Flask-Mail) configuration
-   MAIL_SERVER=smtp.gmail.com
-   MAIL_PORT=587
-   MAIL_USE_TLS=true
-   MAIL_USERNAME=your_email@gmail.com
-   MAIL_PASSWORD=your_app_password
-   MAIL_DEFAULT_SENDER=your_email@gmail.com
    ```
 
 2. **Seed database with initial app data**
