@@ -1184,12 +1184,12 @@ def add_ticket():
             escalated = 0,
             user_id=current_user.id,
             site_id=site_id,  # Assign site_id directly from current_user
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(ticket)
         db.session.flush()
         
-    # Handle file upload (only if file exists and has a valid name)
+    # Handle file upload
         uploaded_file = request.files.get('attachment')
         if uploaded_file and uploaded_file.filename:  # Check both file obj and filename
             allowed_extensions = {'.jpg', '.jpeg', '.png', '.pdf'}
@@ -1233,7 +1233,7 @@ def add_ticket():
                 new_attachment = Ticket_attachment(
                     ticket_id=ticket.id,
                     attach_image=filename,
-                    uploaded_at=datetime.utcnow(),
+                    uploaded_at=datetime.now(timezone.utc),
                     user_id=current_user.id
                 )
                 db.session.add(new_attachment)
@@ -1246,7 +1246,7 @@ def add_ticket():
             new_content = Ticket_content(
                 ticket_id=ticket.id,
                 content=initial_comment,
-                cnt_created_at=datetime.utcnow(),
+                cnt_created_at=datetime.now(timezone.utc),
                 user_id=current_user.id
             )
             db.session.add(new_content)
@@ -1325,7 +1325,7 @@ def delete_attachment(attachment_id):
         
         # Delete database record
         db.session.delete(attachment)
-        ticket.updated_at = datetime.utcnow()  # Update ticket timestamp
+        ticket.updated_at = datetime.now(timezone.utc)  # Update ticket timestamp
         db.session.commit()
         current_app.logger.info(f"Attachment {attachment_id} deleted from database")
         
@@ -1421,7 +1421,7 @@ def edit_ticket(ticket_id):
                 new_attachment = Ticket_attachment(
                     ticket_id=ticket.id,
                     attach_image=filename,
-                    uploaded_at=datetime.utcnow(),
+                    uploaded_at=datetime.now(timezone.utc),
                     user_id=current_user.id
                 )
                 db.session.add(new_attachment)
@@ -1454,7 +1454,7 @@ def edit_ticket(ticket_id):
             Ticket_content(
                 ticket_id=ticket.id,
                 content=subform.content.data,
-                cnt_created_at=datetime.utcnow(),
+                cnt_created_at=datetime.now(timezone.utc),
                 user_id=current_user.id
             ) for subform in form.contents.entries if subform.content.data
         ]
@@ -1464,7 +1464,7 @@ def edit_ticket(ticket_id):
             changes_made = True
 
         if changes_made:
-            ticket.updated_at = datetime.utcnow()
+            ticket.updated_at = datetime.now(timezone.utc)
             db.session.add(ticket)
             db.session.commit()
             flash('Ticket updated successfully!', 'success')
