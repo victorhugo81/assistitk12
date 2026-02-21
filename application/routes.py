@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment
 from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, TicketForm, TitleForm, TicketContentForm
+from .utils import validate_password, validate_file_upload
 from main import db, login_manager
 from datetime import datetime, timedelta, timezone
 import time, os, re, csv, logging
@@ -175,20 +176,10 @@ def change_password():
         if new_password != confirm_password:
             return jsonify({"success": False, "message": "New passwords do not match"}), 400
         
-        # Password complexity requirements
-        if len(new_password) < 12:
-            return jsonify({"success": False, "message": "Password must be at least 12 characters long"}), 400
-            
-        # Check for common password patterns using regex
-        # This is a basic example - consider using a comprehensive password strength library
-        if not (re.search(r'[A-Z]', new_password) and 
-                re.search(r'[a-z]', new_password) and 
-                re.search(r'[0-9]', new_password) and 
-                re.search(r'[^A-Za-z0-9]', new_password)):
-            return jsonify({
-                "success": False, 
-                "message": "Password must contain uppercase, lowercase, numbers, and special characters"
-            }), 400
+        # Validate password complexity
+        is_valid, error_message = validate_password(new_password)
+        if not is_valid:
+            return jsonify({"success": False, "message": error_message}), 400
         
         # Get current user
         user = User.query.filter_by(id=current_user.id).first()
@@ -441,15 +432,15 @@ def profile():
             flash('Both password fields are required.', 'danger')
         elif password != confirm_password:
             flash('Passwords do not match. Please try again.', 'danger')
-        elif len(password) < 10:
-            flash('Password must be at least 10 characters long.', 'danger')
-        elif not re.search(r'[A-Za-z]', password):
-            flash('Password must contain at least one letter.', 'danger')
-        elif not re.search(r'[0-9]', password):
-            flash('Password must contain at least one number.', 'danger')
-        elif not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            flash('Password must contain at least one special character.', 'danger')
         else:
+            # Validate password complexity
+            is_valid, error_message = validate_password(password)
+            if not is_valid:
+                flash(error_message, 'danger')
+                return render_template('profile.html', user=current_user, role=current_user.role,
+                    current_path=current_path, current_page_name=current_page_name)
+
+            # Password is valid, proceed with update
             # Update password and save user
             current_user.password = generate_password_hash(password)
             try:
@@ -542,20 +533,12 @@ def add_user():
         existing_user = User.query.filter_by(email=form.email.data).first()
         if existing_user:
             flash('A user with this email already exists. Please use a different email.', 'danger')
-            return render_template('add_user.html', form=form)  # Re-render form with the error message
+            return render_template('add_user.html', form=form)
         # Validate password complexity
         password = form.password.data
-        if len(password) < 10:
-            flash('Password must be at least 10 characters long.', 'danger')
-            return render_template('add_user.html', form=form)
-        if not re.search(r'[A-Za-z]', password):
-            flash('Password must contain at least one letter.', 'danger')
-            return render_template('add_user.html', form=form)
-        if not re.search(r'[0-9]', password):
-            flash('Password must contain at least one number.', 'danger')
-            return render_template('add_user.html', form=form)
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            flash('Password must contain at least one special character.', 'danger')
+        is_valid, error_message = validate_password(password)
+        if not is_valid:
+            flash(error_message, 'danger')
             return render_template('add_user.html', form=form)
         # Proceed with creating the new user
         hashed_password = generate_password_hash(form.password.data)
@@ -632,17 +615,9 @@ def edit_user(user_id):
         # Validate and update password only if provided
         if form.password.data:
             password = form.password.data
-            if len(password) < 10:
-                flash('Password must be at least 10 characters long.', 'danger')
-                return render_template('edit_user.html', form=form, user=user)
-            if not re.search(r'[A-Za-z]', password):
-                flash('Password must contain at least one letter.', 'danger')
-                return render_template('edit_user.html', form=form, user=user)
-            if not re.search(r'[0-9]', password):
-                flash('Password must contain at least one number.', 'danger')
-                return render_template('edit_user.html', form=form, user=user)
-            if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-                flash('Password must contain at least one special character.', 'danger')
+            is_valid, error_message = validate_password(password)
+            if not is_valid:
+                flash(error_message, 'danger')
                 return render_template('edit_user.html', form=form, user=user)
             user.password = generate_password_hash(password)
             changes_made = True
