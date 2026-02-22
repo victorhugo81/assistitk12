@@ -124,6 +124,24 @@
     </div>
     <!-- End Test Email -->
 
+    <hr class="mx-4">
+
+    <!-- Bulk Upload -->
+    <div class="card-body align-items-center">
+        <div class="container-md align-items-center">
+            <h5 class="mb-1">Bulk Upload Users</h5>
+            <p class="text-sm text-muted mb-3">Upload a CSV file to create multiple users at once.</p>
+            <form action="{{ url_for('routes.bulk_upload_users') }}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3 d-flex align-items-center">
+                    <input type="file" class="file-upload-box form-control me-2" id="csvFile" name="csvFile" accept=".csv" required>
+                    <button type="submit" class="btn bg-gradient-dark">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- End Bulk Upload -->
+
 
 
 <!-- continue main content card -->
