@@ -1,33 +1,37 @@
 # AssistITK12
 
-![AssistITK12 Logo](https://assistitk12.com/wp-content/uploads/2025/05/logo.png) 
+![AssistITK12 Logo](https://assistitk12.com/wp-content/uploads/2025/05/logo.png)
 
-AssistITk12 is a web-based ticketing system designed to help school districts manage support requests, maintenance issues, and other technical problems. It's built with Flask and Bootstrap to provide a user-friendly and efficient solution.
+AssistITK12 is a web-based ticketing system designed to help school districts manage support requests, maintenance issues, and other technical problems. It's built with Flask and Bootstrap to provide a user-friendly and efficient solution.
 
-[AssistITk12.com](https://assistitk12.com) 
+[AssistITK12.com](https://assistitk12.com)
 
 ## Features
 
-- **Issue tracking**: Create, manage, and track support tickets.
-- **Prioritization**: Assign priorities to tickets to ensure critical issues are addressed first.
-- **User management**: Create and manage user accounts with different levels of access.
+- **Issue Tracking**: Create, manage, and track support tickets with status updates and comments.
+- **Ticket Assignment**: Assign tickets to technicians and escalate when needed.
+- **File Attachments**: Attach files to tickets for additional context.
+- **Email Notifications**: Automated email alerts for ticket events (created, assigned, status changes, escalations, and new comments).
+- **User Management**: Create and manage user accounts with role-based access control (Admin, Specialist, Technician).
+- **Organization Settings**: Configure organization name, logo, and SMTP email settings with encrypted credential storage.
+- **Site Management**: Manage multiple school locations and associate tickets and users to sites.
 - **Reporting**: Generate reports to track trends and identify areas for improvement.
-- **Customization**: Customize the look and feel of the application to match your school's branding.
-- **Data Visualization**: Generate charts and graphs to visualize common technical issues and trends.
+- **Data Visualization**: Charts and graphs to visualize common technical issues and trends.
+- **Notifications**: Configurable system-wide notification messages.
 
 ## Application Versions
 
-- **Python 3.12.9**
-- **Flask 3.1.0**
-- **See requirements.txt** for a complete enumeration of package dependencies
+- **Python 3.13+**
+- **Flask 3.1.2**
+- **See pyproject.toml** for a complete list of package dependencies
 
 ## Installation
 
-### Prerequisites Dependencies
+### Prerequisites
 
 - [Git](https://git-scm.com/downloads/linux)
 - [UV: Ultra fast Python package manager](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
-- [Python 3.12.x](https://docs.astral.sh/uv/concepts/python-versions/#installing-a-python-version)
+- [Python 3.13+](https://docs.astral.sh/uv/concepts/python-versions/#installing-a-python-version)
 - [MySQL Server](https://dev.mysql.com/doc/mysql-getting-started/en/)
 
 
@@ -42,6 +46,7 @@ cd assistitk12
 
 ### Step 2: Set up a virtual environment
 Choose the instructions appropriate for your OS.
+
 **Windows:**
 ```bash
 uv venv .venv
@@ -58,46 +63,49 @@ uv venv .venv
 source .venv/bin/activate
 ```
 
-### Step 3:  Initialize UV project and install dependencies
+### Step 3: Initialize UV project and install dependencies
 
 ```bash
 uv sync
 ```
 
 ### Step 4: APP Database Setup
-Important: Don't commit your .env file to version control. Make sure it's added to .gitignore to protect sensitive information!
 
-These script creates:
+> **Important:** Don't commit your `.env` file to version control. Make sure it's added to `.gitignore` to protect sensitive information.
+
+These scripts create:
 - Default ticket statuses (Open, In Progress, Completed)
 - Priority levels (Low, Medium, High, Critical)
 - Common issue categories
-- An .env file that contains configuration settings and secrets such as API keys, database credentials, or Flask settings outside your source code.
+- An `.env` file containing configuration settings and secrets such as API keys, database credentials, or Flask settings outside your source code
 
-1. **Create .env file and MySQL database**
-This script will create a file named .env in your project's root directory.
-Edit the generated .env to use your actual database values.
+**1. Create `.env` file and MySQL database**
+
+This script will create a file named `.env` in your project's root directory. Edit the generated `.env` to use your actual database values.
+
 ```bash
 cd installation
 ```
 ```bash
-python create_env.py 
+python create_env.py
 ```
 
-   ```
-   # .env file
-   # An Application SECRET_KEY is a randomly generated string of characters used for security purposes.
-   SECRET_KEY=your_secure_random_key_here
+```
+# .env file
+# An Application SECRET_KEY is a randomly generated string of characters used for security purposes.
+SECRET_KEY=your_secure_random_key_here
 
-   # Database Connection URI
-   DATABASE_URL=mysql+pymysql://username:password@localhost/assistitk12
-   ```
+# Database Connection URI
+DATABASE_URL=mysql+pymysql://username:password@localhost/assistitk12
+```
 
-2. **Seed database with initial app data**
+**2. Seed database with initial app data**
+
 Run the seed script to populate the database with initial data (including status types, priority levels, and categories):
 
 ```bash
-python seed_data.py 
-   ```
+python seed_data.py
+```
 
 
 ### Step 5: Start Flask development server
@@ -119,26 +127,27 @@ Open a web browser and navigate to the URL displayed in your terminal (usually h
 ### Login
 
 Enter the admin email and password you previously configured.
-- Password must be over 10 characters long, contain letters and numbers, and special characters.
+- Password must be at least 12 characters long and contain uppercase letters, lowercase letters, numbers, and special characters.
 
-![Login Screen](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-login.png) <!-- Add a login screen screenshot here -->
+![Login Screen](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-login.png)
 
 ### Dashboard - Data Visualization
 
 The dashboard provides an overview of all tickets, their statuses, and key metrics to help identify trends and areas for improvement.
 
-![Dashboard](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-dashboard-scaled.png) <!-- Add a dashboard screenshot here -->
+![Dashboard](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-dashboard-scaled.png)
 
 ### Creating a ticket
 
-1. Click on Tickets sidebar
-1. Click the "Add Ticket" button
-2. Fill in the required details
-3. Click the "Submit Ticket" button
+1. Click on Tickets in the sidebar
+2. Click the "Add Ticket" button
+3. Fill in the required details
+4. Click the "Submit Ticket" button
 
-![Create Ticket](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-new-ticket-1536x820.png) <!-- Create a new ticket screenshot here -->
+![Create Ticket](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-new-ticket-1536x820.png)
 
 ## Troubleshooting
+
 ### Database Connection Issues
 
 - Ensure your MySQL server is running
@@ -158,7 +167,7 @@ flask db upgrade
 If you encounter missing module errors:
 
 ```bash
-uv pip install -r requirements.txt --upgrade
+uv sync
 ```
 
 ## Production Deployment
@@ -196,15 +205,15 @@ We welcome contributions from the community!
 
 ## License
 
-AssistITk12 is licensed under the GNU General Public License v3. See the LICENSE.txt file for more details.
+AssistITK12 is licensed under the GNU General Public License v3. See the LICENSE file for more details.
 
 ## Contact
 
-For questions or suggestions, please open an issue on GitHub or contact me at assistitk12@victorhugosolis.com.
+For questions or suggestions, please open an issue on GitHub or contact me at contact@victorhugosolis.com.
 
 ## Disclaimer
 
-AssistITk12 is still under development and may contain bugs or limitations. We are committed to improving the software and welcome your feedback.
+AssistITK12 is still under development and may contain bugs or limitations. We are committed to improving the software and welcome your feedback.
 
 ## Project Structure Tree
 
@@ -215,6 +224,8 @@ assistitk12/
 │   ├── models.py
 │   ├── forms.py
 │   ├── routes.py
+│   ├── utils.py
+│   ├── email_utils.py
 │   ├── static/
 │   │   ├── css/
 │   │   ├── js/
@@ -240,7 +251,7 @@ assistitk12/
 │       ├── error.html
 │       ├── index.html
 │       ├── login.html
-│       ├── notification.html
+│       ├── notifications.html
 │       ├── organization.html
 │       ├── profile.html
 │       ├── roles.html
@@ -250,9 +261,9 @@ assistitk12/
 │       └── users.html
 ├── main.py
 ├── config.py
-├── requirements.txt
+├── pyproject.toml
+├── uv.lock
 └── installation/
     ├── create_env.py
     └── seed_data.py
 ```
-
