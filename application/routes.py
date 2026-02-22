@@ -1274,23 +1274,13 @@ def add_ticket():
         
     # Handle file upload
         uploaded_file = request.files.get('attachment')
-        if uploaded_file and uploaded_file.filename:  # Check both file obj and filename
-            allowed_extensions = {'.jpg', '.jpeg', '.png', '.pdf'}
+        if uploaded_file and uploaded_file.filename:
+            is_valid, error_message = validate_file_upload(uploaded_file)
+            if not is_valid:
+                flash(error_message, 'error')
+                return redirect(request.url)
+
             file_ext = os.path.splitext(uploaded_file.filename)[1].lower()
-
-            if file_ext not in allowed_extensions:
-                flash('Only JPG, PNG, and PDF files are allowed', 'error')
-                return redirect(request.url)
-
-            # Check file size (5MB max)
-            uploaded_file.seek(0, os.SEEK_END)
-            file_length = uploaded_file.tell()
-            uploaded_file.seek(0)  # Reset file pointer
-
-            if file_length > 5 * 1024 * 1024:
-                flash('File size exceeds 5MB limit', 'error')
-                return redirect(request.url)
-
             # Generate a unique filename
             new_filename = f"ticket_{ticket.id}_{datetime.now().strftime('%Y%m%d-%H%M%S')}{file_ext}"
             filename = secure_filename(new_filename)
@@ -1416,7 +1406,7 @@ def delete_attachment(attachment_id):
         flash('Attachment deleted successfully.', 'success')
     except Exception as e:
         db.session.rollback()
-        print(f"Error deleting attachment: {str(e)}")
+        current_app.logger.error(f"Error deleting attachment {attachment_id}: {str(e)}")
         flash('Error deleting attachment.', 'danger')
     
     return redirect(url_for('routes.edit_ticket', ticket_id=ticket_id))
@@ -1473,27 +1463,15 @@ def edit_ticket(ticket_id):
             flash(f'Ticket {"escalated" if ticket.escalated else "de-escalated"} successfully!', 'success')
 
             
-        # In both routes, replace the file handling section with this:
         # Handle file upload
         uploaded_file = request.files.get('attachment')
         if uploaded_file and uploaded_file.filename != '':
-            # Validate file type
-            allowed_extensions = {'.jpg', '.jpeg', '.png', '.pdf'}
+            is_valid, error_message = validate_file_upload(uploaded_file)
+            if not is_valid:
+                flash(error_message, 'error')
+                return redirect(request.url)
+
             file_ext = os.path.splitext(uploaded_file.filename)[1].lower()
-            
-            if file_ext not in allowed_extensions:
-                flash('Only JPG, PNG, and PDF files are allowed', 'error')
-                return redirect(request.url)
-            
-            # Validate file size (5MB max)
-            uploaded_file.seek(0, os.SEEK_END)
-            file_length = uploaded_file.tell()
-            uploaded_file.seek(0)  # Reset file pointer to start
-            
-            if file_length > 5 * 1024 * 1024:  # 5MB
-                flash('File size exceeds 5MB limit', 'error')
-                return redirect(request.url)
-            
             # Create filename with ticket ID
             new_filename = f"ticket_{ticket.id}_{datetime.now().strftime('%Y%m%d-%H%M%S')}{file_ext}"
             filename = secure_filename(new_filename)

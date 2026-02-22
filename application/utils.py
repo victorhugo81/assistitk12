@@ -80,7 +80,12 @@ def validate_password(password: str, min_length: int = 12) -> Tuple[bool, Option
 
 def validate_file_upload(file, allowed_extensions=None, max_size_mb=5):
     """
-    Validate uploaded files for security.
+    Validate uploaded files for security using both extension and magic byte checks.
+
+    Defends against:
+    - Extension spoofing (e.g., malware.php renamed to malware.jpg)
+    - Oversized uploads
+    - Empty files
 
     Args:
         file: FileStorage object from request.files
@@ -92,28 +97,55 @@ def validate_file_upload(file, allowed_extensions=None, max_size_mb=5):
     """
     import os
 
+    # Magic bytes (file signatures) for allowed types
+    MAGIC_BYTES = {
+        b'\xff\xd8\xff': '.jpg',         # JPEG
+        b'\x89PNG\r\n\x1a\n': '.png',   # PNG
+        b'%PDF': '.pdf',                 # PDF
+    }
+
     if allowed_extensions is None:
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.pdf'}
 
     if not file or not file.filename:
         return False, "No file selected"
 
-    # Check file extension
+    # 1. Check file extension
     file_ext = os.path.splitext(file.filename)[1].lower()
     if file_ext not in allowed_extensions:
-        allowed = ', '.join(allowed_extensions)
+        allowed = ', '.join(sorted(allowed_extensions))
         return False, f"Invalid file type. Allowed types: {allowed}"
 
-    # Check file size
+    # 2. Check file size
     file.seek(0, os.SEEK_END)
     file_length = file.tell()
     file.seek(0)  # Reset file pointer
+
+    if file_length == 0:
+        return False, "File is empty"
 
     max_bytes = max_size_mb * 1024 * 1024
     if file_length > max_bytes:
         return False, f"File size exceeds {max_size_mb}MB limit"
 
-    if file_length == 0:
-        return False, "File is empty"
+    # 3. Validate actual file content using magic bytes
+    header = file.read(8)
+    file.seek(0)  # Reset file pointer after reading
+
+    matched_type = None
+    for magic, ext in MAGIC_BYTES.items():
+        if header.startswith(magic):
+            matched_type = ext
+            break
+
+    if matched_type is None:
+        return False, "File content does not match an allowed file type (JPG, PNG, PDF)"
+
+    # 4. Ensure extension matches the actual file content
+    # .jpg and .jpeg both map to the JPEG magic bytes
+    if matched_type == '.jpg' and file_ext not in {'.jpg', '.jpeg'}:
+        return False, "File extension does not match file content"
+    elif matched_type != '.jpg' and file_ext != matched_type:
+        return False, "File extension does not match file content"
 
     return True, None
