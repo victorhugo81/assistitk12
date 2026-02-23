@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <!-- main content card -->
+<div class="row">
+    <div class="col-12">
+        <div class="main-card-box card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3 d-flex align-items-center justify-content-between px-3">
+            <h1 class="text-white text-capitalize mb-0">Bulk Upload Users</h1>
+            <a href="{{ url_for('routes.organization') }}" class="btn btn-sm btn-outline-light mb-0">
+                <i class="material-symbols-rounded position-relative" style="font-size:1rem; vertical-align:middle;">arrow_back</i> Back
+            </a>
+          </div>
+        </div>
+        <div class="card-body px-0 pb-2">
+            <br>
+
+    <!-- Upload File Card -->
+    <div class="card-body align-items-center">
+        <div class="container-md align-items-center">
+            <h5 class="mb-1">
+                <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">upload_file</i>
+                Upload User Data File
+            </h5>
+            <p class="text-sm text-muted mb-3">Please click below or drag and drop the CSV file to upload.</p>
+
+            <form action="{{ url_for('routes.bulk_upload_users') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Drag and Drop Zone -->
+                <div class="upload-drop-zone" id="dropZone">
+                    <i class="material-symbols-rounded upload-drop-zone-icon">upload_file</i>
+                    <p class="mb-1 fw-semibold">Upload File</p>
+                    <p class="text-muted text-sm mb-1">Click or drag and drop file here</p>
+                    <p class="text-xs text-muted">(Maximum File Size: 10MB)</p>
+                    <input type="file" id="csvFile" name="csvFile" accept=".csv" required class="d-none">
+                    <div id="fileName" class="text-sm mt-2"></div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-3">
+                    <button type="submit" class="btn bg-gradient-dark" id="uploadBtn" disabled>Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- End Upload File Card -->
+
+    <hr class="mx-4">
+
+    <!-- Upload Log Section -->
+    <div class="table-per-page-section mt-2">
+        <div class="row justify-content-between align-items-center">
+            <div class="col">
+                <h5 class="mb-0 ps-2">
+                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">history</i>
+                    Review Upload Log
+                </h5>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Log Table -->
+    <div class="table-responsive mt-3">
+        <table class="table align-items-center mb-0 table-striped">
+            <thead>
+                <tr>
+                    <th class="text-uppercase text-xxs font-weight-bolder">Date / File</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder">Uploaded By</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Total Records</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Added</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Updated</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if logs %}
+                    {% for log in logs %}
+                    <tr>
+                        <td>
+                            <div class="d-flex px-2 py-1 align-items-center">
+                                <i class="material-symbols-rounded text-muted me-2" style="font-size:1.2rem;">description</i>
+                                <div>
+                                    <h6 class="mb-0 text-sm">{{ log.filename }}</h6>
+                                    <p class="text-xs text-secondary mb-0">{{ log.uploaded_at.strftime('%m/%d/%Y %I:%M %p') }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <p class="text-xs font-weight-bold mb-0">
+                                {% if log.uploader %}
+                                    <i class="material-symbols-rounded position-relative me-1" style="font-size:0.9rem; vertical-align:middle;">person</i>
+                                    {{ log.uploader.first_name }} {{ log.uploader.last_name }}
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </p>
+                        </td>
+                        <td class="text-center align-middle">
+                            <span class="text-xs font-weight-bold">{{ log.total_records }}</span>
+                            <p class="text-xs text-muted mb-0">Total Records</p>
+                        </td>
+                        <td class="text-center align-middle">
+                            <span class="text-success text-xs font-weight-bold">{{ log.users_added }}</span>
+                            <p class="text-xs text-muted mb-0">Added</p>
+                        </td>
+                        <td class="text-center align-middle">
+                            <span class="text-info text-xs font-weight-bold">{{ log.users_updated }}</span>
+                            <p class="text-xs text-muted mb-0">Updated</p>
+                        </td>
+                        <td class="text-center align-middle">
+                            {% if log.status == 'success' %}
+                                <span class="badge badge-sm bg-gradient-success">Success</span>
+                            {% else %}
+                                <span class="badge badge-sm bg-gradient-danger"
+                                      data-bs-toggle="tooltip"
+                                      data-bs-placement="left"
+                                      title="{{ log.error_message }}">Error</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No uploads yet.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    <!-- End Upload Log Table -->
+
+</div>
+</div>
+</div>
+</div>
+<!-- End main content card -->
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('csvFile');
+const fileNameDisplay = document.getElementById('fileName');
+const uploadBtn = document.getElementById('uploadBtn');
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('upload-drop-zone-active');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('upload-drop-zone-active');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('upload-drop-zone-active');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        fileInput.files = files;
+        handleFileSelect(files[0]);
+    }
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        handleFileSelect(fileInput.files[0]);
+    }
+});
+
+function handleFileSelect(file) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        fileNameDisplay.innerHTML = '<span class="text-danger"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">error</i> Please select a CSV file.</span>';
+        uploadBtn.disabled = true;
+        return;
+    }
+    fileNameDisplay.innerHTML = '<span class="text-success"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">check_circle</i> ' + file.name + '</span>';
+    uploadBtn.disabled = false;
+}
+
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+tooltipTriggerList.forEach(function (el) {
+    new bootstrap.Tooltip(el);
+});
+</script>
+
+{% endblock %}

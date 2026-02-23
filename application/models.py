@@ -119,3 +119,17 @@ class Ticket_attachment(db.Model):
     attach_image = db.Column(db.String(255), nullable=False)  # This column should exist
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+
+class BulkUploadLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    filename = db.Column(db.String(255), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    total_records = db.Column(db.Integer, default=0)
+    users_added = db.Column(db.Integer, default=0)
+    users_updated = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='success')
+    error_message = db.Column(db.Text, nullable=True)
+
+    uploader = db.relationship('User', foreign_keys=[uploaded_by_id])

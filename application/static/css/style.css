@@ -4640,6 +4640,30 @@ background-color: #f5f5f5;
   cursor: pointer;
 }
 
+/* Bulk Upload drag-and-drop zone */
+.upload-drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 0.75rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  background-color: #fafafa;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.upload-drop-zone:hover,
+.upload-drop-zone-active {
+  border-color: var(--bs-main-color-secondary);
+  background-color: #f0f4f8;
+}
+
+.upload-drop-zone-icon {
+  font-size: 3rem;
+  color: #aaa;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
 
 
 

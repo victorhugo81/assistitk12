@@ -3,7 +3,7 @@ from flask_login import login_user, login_required, logout_user, current_user
 from flask_paginate import Pagination, get_page_args
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment
+from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment, BulkUploadLog
 from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, EmailConfigForm, TicketForm, TitleForm, TicketContentForm
 from .utils import validate_password, validate_file_upload, encrypt_mail_password, decrypt_mail_password
 from .email_utils import send_ticket_notification
@@ -729,6 +729,17 @@ def delete_user(user_id):
 
 
 
+# ****************** Upload Users Page *******************************
+@routes_blueprint.route('/upload-users', methods=['GET'])
+@login_required
+def upload_users():
+    is_admin()
+    logs = BulkUploadLog.query.order_by(BulkUploadLog.uploaded_at.desc()).all()
+    return render_template('upload_user.html',
+                           logs=logs,
+                           current_page_name='Bulk Upload Users')
+
+
 # ****************** Import Bulk Users *******************************
 @routes_blueprint.route('/bulk-upload-users', methods=['POST'])
 @login_required
@@ -738,36 +749,37 @@ def bulk_upload_users():
 
     if 'csvFile' not in request.files:
         flash('No file part', 'danger')
-        return redirect(url_for('routes.users'))
+        return redirect(url_for('routes.upload_users'))
 
     file = request.files['csvFile']
     if file.filename == '':
         flash('No selected file', 'danger')
-        return redirect(url_for('routes.users'))
+        return redirect(url_for('routes.upload_users'))
 
     if not file.filename.endswith('.csv'):
         flash('Invalid file format. Please upload a CSV file.', 'danger')
-        return redirect(url_for('routes.users'))
+        return redirect(url_for('routes.upload_users'))
+
+    filename = secure_filename(file.filename)
+    users_added = 0
+    users_updated = 0
+    total_records = 0
 
     try:
         # Decode the uploaded file
         stream = file.stream.read().decode("UTF-8")
-        csv_reader = csv.DictReader(stream.splitlines())
+        rows = list(csv.DictReader(stream.splitlines()))
+        total_records = len(rows)
 
-        users_added = 0
-        users_updated = 0
-
-        for row in csv_reader:
+        for row in rows:
             # Validate mandatory fields
             if not all([row.get('first_name'), row.get('last_name'), row.get('email'), row.get('role_id'), row.get('site_name'), row.get('rm_num')]):
-                flash('Some rows in the CSV file are missing required fields.', 'danger')
-                return redirect(url_for('routes.users'))
+                raise ValueError('Some rows in the CSV file are missing required fields.')
 
             # Find the site_id from site_name
             site = Site.query.filter_by(site_name=row['site_name']).first()
             if not site:
-                flash(f"Site '{row['site_name']}' not found. Please verify the CSV file.", 'danger')
-                return redirect(url_for('routes.users'))
+                raise ValueError(f"Site '{row['site_name']}' not found. Please verify the CSV file.")
 
             # Check for existing user
             existing_user = User.query.filter_by(email=row['email']).first()
@@ -794,12 +806,38 @@ def bulk_upload_users():
                 users_added += 1
 
         db.session.commit()
+
+        log = BulkUploadLog(
+            filename=filename,
+            uploaded_by_id=current_user.id,
+            total_records=total_records,
+            users_added=users_added,
+            users_updated=users_updated,
+            status='success'
+        )
+        db.session.add(log)
+        db.session.commit()
+
         flash(f'Successfully added {users_added} users and updated {users_updated} users.', 'success')
+
     except Exception as e:
         db.session.rollback()
+
+        log = BulkUploadLog(
+            filename=filename,
+            uploaded_by_id=current_user.id,
+            total_records=total_records,
+            users_added=users_added,
+            users_updated=users_updated,
+            status='error',
+            error_message=str(e)
+        )
+        db.session.add(log)
+        db.session.commit()
+
         flash(f'An error occurred while processing the file: {e}', 'danger')
 
-    return redirect(url_for('routes.organization'))
+    return redirect(url_for('routes.upload_users'))
 
 
 

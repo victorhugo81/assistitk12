@@ -19,6 +19,42 @@
 
 
 
+
+    <!-- Secondary Menu -->
+    <div class="container-fluid my-3 py-3">
+    <div class="row mb-5">
+      <div class="col-lg-3">
+        <div class="card position-sticky top-1">
+          <ul class="nav flex-column bg-white border-radius-lg p-3">
+            <li class="nav-item secondary-nav">
+              <a class="nav-link text-dark d-flex" data-scroll="" href="#organization">
+                <i class="material-symbols-rounded text-lg me-2">house</i>
+                <span class="text-sm">Organization</span>
+              </a>
+            </li>
+            <li class="nav-item secondary-nav">
+              <a class="nav-link text-dark d-flex" data-scroll="" href="#email-config">
+                <i class="material-symbols-rounded text-lg me-2">mail</i>
+                <span class="text-sm">Email Configuration</span>
+              </a>
+            </li>
+            <li class="nav-item secondary-nav pt-2">
+              <a class="nav-link text-dark d-flex" data-scroll="" href="#bulk-upload">
+                <i class="material-symbols-rounded text-lg me-2">upload_file</i>
+                <span class="text-sm">Bulk Upload Users</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="col-lg-9 mt-lg-0 mt-4">
+    <!-- END Secondary Menu -->
+
+
+    <!-- Profile Card --> 
+    <div class="card card-body px-4">
+      <div class="row justify-content-center align-items-center" id="organization">
+
     <!-- General Settings form -->
     <div class="card-body align-items-center">
         <div class="container-md align-items-center">
@@ -35,7 +71,7 @@
                 </div>
                 <div class="input-group input-group-outline justify-content-end gap-2">
                     {{ form.submit(class="btn bg-gradient-dark") }}
-                    <a type="button" class="btn reset-button-box shadow-dark" href="{{ url_for('routes.organization') }}">Back</a>
+                    <a type="button" class="btn reset-button-box shadow-dark" href="{{ url_for('routes.organization') }}">Cancel</a>
                 </div>
             </form>
         </div>
@@ -45,9 +81,9 @@
     <hr class="mx-4">
 
     <!-- Email Configuration form -->
-    <div class="card-body align-items-center">
+    <div class="card-body align-items-center" id="email-config">
         <div class="container-md align-items-center">
-            <h5 class="mb-1">Email Configuration (Flask-Mail)</h5>
+            <h5 class="mb-1">Email Configuration</h5>
             <p class="text-sm text-muted mb-3">Configure the SMTP settings used to send ticket notifications. TLS and SSL are mutually exclusive — use TLS (port 587) or SSL (port 465), not both.</p>
             <form method="POST" action="{{ url_for('routes.email_config') }}">
               {{ email_form.csrf_token }}
@@ -85,38 +121,40 @@
                 </div>
                 <div class="d-flex gap-4 my-3">
                     <div class="form-check">
-                        {{ email_form.mail_use_tls(class="form-check-input") }}
-                        {{ email_form.mail_use_tls.label(class="form-check-label") }}
+                        <input class="form-check-input" type="checkbox" id="mail_use_tls"
+                            name="mail_use_tls" {% if email_form.mail_use_tls.data %}checked{% endif %}>
+                        <label class="form-check-label" for="mail_use_tls">Use TLS (STARTTLS)</label>
                     </div>
                     <div class="form-check">
-                        {{ email_form.mail_use_ssl(class="form-check-input") }}
-                        {{ email_form.mail_use_ssl.label(class="form-check-label") }}
+                        <input class="form-check-input" type="checkbox" id="mail_use_ssl"
+                            name="mail_use_ssl" {% if email_form.mail_use_ssl.data %}checked{% endif %}>
+                        <label class="form-check-label" for="mail_use_ssl">Use SSL</label>
                     </div>
                 </div>
                 <div class="input-group input-group-outline justify-content-end gap-2">
                     {{ email_form.submit_email(class="btn bg-gradient-dark") }}
+                    <a type="button" class="btn reset-button-box shadow-dark" href="{{ url_for('routes.organization') }}">Cancel</a>
                 </div>
             </form>
         </div>
     </div>
     <!-- End Email Configuration form -->
 
-    <hr class="mx-4">
 
     <!-- Test Email -->
-    <div class="card-body align-items-center">
+    <div class="card-body align-items-center" style="border: 1px solid #dee2e6; padding:20px;">
         <div class="container-md align-items-center">
             <h5 class="mb-1">Send Test Email</h5>
             <p class="text-sm text-muted mb-3">Verify your SMTP configuration by sending a test email.</p>
             <div class="row align-items-end">
-                <div class="col-md-6">
+                <div class="col-md-8">
                     <div class="input-group input-group-outline my-3">
                         <label class="form-label">Recipient Email</label>
-                        <input type="email" id="testRecipient" class="form-control" placeholder="recipient@example.com">
+                        <input type="email" id="testRecipient" class="form-control " placeholder="recipient@example.com">
                     </div>
                 </div>
                 <div class="col-md-auto mb-3">
-                    <button type="button" class="btn bg-gradient-info" id="sendTestEmail">Send Test Email</button>
+                    <button type="button" class="btn bg-gradient-dark" id="sendTestEmail">Send Test Email</button>
                 </div>
             </div>
             <div id="testEmailResult" class="mt-2" style="display:none;"></div>
@@ -127,20 +165,26 @@
     <hr class="mx-4">
 
     <!-- Bulk Upload -->
-    <div class="card-body align-items-center">
+    <div class="card-body align-items-center" id="bulk-upload">
         <div class="container-md align-items-center">
             <h5 class="mb-1">Bulk Upload Users</h5>
-            <p class="text-sm text-muted mb-3">Upload a CSV file to create multiple users at once.</p>
-            <form action="{{ url_for('routes.bulk_upload_users') }}" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="mb-3 d-flex align-items-center">
-                    <input type="file" class="file-upload-box form-control me-2" id="csvFile" name="csvFile" accept=".csv" required>
-                    <button type="submit" class="btn bg-gradient-dark">Upload</button>
-                </div>
-            </form>
+            <p class="text-sm text-muted mb-3">Upload a CSV file to create or update multiple users at once. View upload history and manage imports on the dedicated upload page.</p>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ url_for('routes.upload_users') }}" class="btn bg-gradient-dark mb-0">
+                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">upload_file</i>
+                    Bulk Upload
+                </a>
+                <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
+                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">download</i>
+                    Download Template
+                </a>
+            </div>
         </div>
     </div>
     <!-- End Bulk Upload -->
+
+
+
 
 
 
