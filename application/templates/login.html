@@ -55,7 +55,6 @@
                 </div>
                 <form method="POST" class="signin-form" aria-labelledby="signin-heading">
                   {{ form.hidden_tag() }}
-                  {{ form.csrf_token }}
                   <div class="login-form-group mb-3">
                     <label class="label" for="email" id="email-label">Email</label>
                     {{ form.email(class="login-form-control", type="email", aria_required="true", aria_labelledby="email-label", aria_describedby="email-help") }}

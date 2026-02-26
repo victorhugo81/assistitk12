@@ -16,4 +16,5 @@ dependencies = [
     "flask-paginate>=2024.4.12",
     "flask-wtf>=1.2.2",
     "pymysql>=1.1.2",
+    "flask-limiter>=4.1.1",
 ]

@@ -12,6 +12,9 @@ class Config:
     # Database connection string, with a fallback for development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///app.db')
 
+    # Flask-Limiter storage: set RATELIMIT_STORAGE_URI=redis://... in production
+    RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
+
     # Flask-Mail configuration
     MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.environ.get('MAIL_PORT', 465))
@@ -26,8 +29,13 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False  # Disable debug mode for production
-    # In production, ensure SECRET_KEY is set in environment variables
-    # No fallback should be used in production for sensitive settings
+
+    def __init__(self):
+        if self.SECRET_KEY == 'dev-secret-key':
+            raise RuntimeError(
+                "SECRET_KEY must be set to a strong random value in production. "
+                "Set the SECRET_KEY environment variable."
+            )
 
 # Dictionary to manage different configurations for different environments
 config = {

@@ -33,6 +33,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), nullable=False, unique=True)
     status = db.Column(db.String(120), nullable=False)
     password = db.Column(db.String(255), nullable=False)
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False)
     rm_num = db.Column(db.String(45), nullable=True)
     role_id = db.Column(db.Integer, db.ForeignKey('role.id', ondelete='CASCADE'), nullable=False)
     site_id = db.Column(db.Integer, db.ForeignKey('site.id', ondelete='CASCADE'), nullable=False)

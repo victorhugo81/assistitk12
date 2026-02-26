@@ -5,6 +5,8 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from config import config
 
 # Initialize global extensions
@@ -12,6 +14,7 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 csrf = CSRFProtect()
 mail = Mail()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @login_manager.user_loader
@@ -39,6 +42,7 @@ def create_app(config_name='default'):
     login_manager.init_app(app)
     csrf.init_app(app)
     mail.init_app(app)
+    limiter.init_app(app)
     login_manager.login_view = "routes.login"
 
     migrate = Migrate(app, db)

@@ -170,6 +170,19 @@ If you encounter missing module errors:
 uv sync
 ```
 
+## Security
+
+AssistITK12 includes the following security measures:
+
+- **Login rate limiting** — brute force protection via Flask-Limiter (10 attempts/min per IP).
+- **Account status enforcement** — inactive users cannot authenticate.
+- **CSRF protection** — all forms are protected using Flask-WTF.
+- **Password hashing** — passwords are hashed using werkzeug's secure default (scrypt).
+- **Password complexity** — minimum 12 characters with uppercase, lowercase, number, and special character required.
+- **Temporary password enforcement** — bulk-uploaded users receive a random temporary password and must change it before accessing the application.
+- **Encrypted SMTP credentials** — email passwords are stored encrypted using Fernet symmetric encryption.
+- **Role-based access control** — routes are protected based on user role (Admin, Specialist, Technician).
+
 ## Production Deployment
 
 For production environments:
@@ -182,7 +195,13 @@ For production environments:
 
 2. Set up a reverse proxy with Nginx or Apache
 
-3. Update your `.env` file with production settings
+3. Update your `.env` file with production settings:
+   ```
+   SECRET_KEY=your_strong_random_key_here
+   DATABASE_URL=mysql+pymysql://username:password@localhost/assistitk12
+   RATELIMIT_STORAGE_URI=redis://localhost:6379/0
+   ```
+   > **Note:** In production, set `RATELIMIT_STORAGE_URI` to a Redis instance. The default in-memory storage does not persist across restarts or scale across multiple workers.
 
 ## Contributing
 

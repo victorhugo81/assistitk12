@@ -21,7 +21,7 @@ class UserForm(FlaskForm):
     status = SelectField('Status:',
         choices=[('Active', 'Active'), ('Inactive', 'Inactive')],
         validators=[DataRequired()]    )
-    password = PasswordField('New Password:', validators=[Optional(), Length(min=10)])
+    password = PasswordField('New Password:', validators=[Optional(), Length(min=12)])
     submit = SubmitField('Save User')
 
 

@@ -7,10 +7,10 @@ from .models import User, Role, Site, Notification, Organization, Ticket, Title,
 from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, EmailConfigForm, TicketForm, TitleForm, TicketContentForm
 from .utils import validate_password, validate_file_upload, encrypt_mail_password, decrypt_mail_password
 from .email_utils import send_ticket_notification
-from main import db, login_manager, mail
+from main import db, login_manager, mail, limiter
 from flask_mail import Message
 from datetime import datetime, timedelta, timezone
-import time, os, re, csv, logging
+import time, os, re, csv, logging, secrets
 from sqlalchemy.sql import func
 from flask_caching import Cache
 from sqlalchemy import case
@@ -41,6 +41,17 @@ routes_blueprint = Blueprint('routes', __name__)
 #-------------------- Core Setup -------------------------
 # -------------- Do not change this section --------------
 # *****************************************************************
+
+# ****************** Force Password Change Enforcement *************
+@routes_blueprint.before_request
+def enforce_password_change():
+    """Redirect users with a temporary password to the profile page before they can do anything else."""
+    if current_user.is_authenticated and getattr(current_user, 'must_change_password', False):
+        allowed = {'routes.profile', 'routes.logout', 'routes.change_password', 'static'}
+        if request.endpoint not in allowed:
+            flash('You must change your password before continuing.', 'warning')
+            return redirect(url_for('routes.profile'))
+
 
 # ****************** Login Setup *******************************
 @login_manager.user_loader
@@ -96,13 +107,14 @@ def forbidden_error(error):
 
 # ****************** Login Page *******************************
 @routes_blueprint.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute; 50 per hour")
 def login():
     """
     Handle user login requests.
-    
+
     GET: Display the login form
     POST: Process the login form submission
-    
+
     Returns:
         Response: Rendered login template or redirect to index on successful login
     """
@@ -121,8 +133,11 @@ def login():
     if form.validate_on_submit():
         # Find user by email and validate password
         user = User.query.filter_by(email=form.email.data).first()
-        if user and check_password_hash(user.password, form.password.data):
+        if user and user.status == 'Active' and check_password_hash(user.password, form.password.data):
             login_user(user)
+            if user.must_change_password:
+                flash('Your account uses a temporary password. Please change it before continuing.', 'warning')
+                return redirect(url_for('routes.profile'))
             return redirect(url_for('routes.index'))
         else:
             flash('Invalid email or password', 'danger')
@@ -196,11 +211,12 @@ def change_password():
             return jsonify({"success": False, "message": "Current password is incorrect"}), 401
             
         # Hash the new password using werkzeug security functions
-        password_hash = generate_password_hash(new_password, method='pbkdf2:sha256:150000')
+        password_hash = generate_password_hash(new_password)
         
         # Update the password in the database
         user.password = password_hash
-        
+        user.must_change_password = False
+
         # Commit the changes to the database
         db.session.commit()
         
@@ -526,6 +542,7 @@ def profile():
             # Password is valid, proceed with update
             # Update password and save user
             current_user.password = generate_password_hash(password)
+            current_user.must_change_password = False
             try:
                 db.session.commit()
                 flash('Password updated successfully!', 'success')
@@ -797,7 +814,8 @@ def bulk_upload_users():
                     last_name=row['last_name'],
                     email=row['email'],
                     status=row.get('status', 'Active'),
-                    password=generate_password_hash('default_password'),  # Default password
+                    password=generate_password_hash(secrets.token_urlsafe(16)),  # Random temporary password
+                    must_change_password=True,
                     rm_num=row.get('rm_num', None),
                     role_id=row['role_id'],
                     site_id=site.id
