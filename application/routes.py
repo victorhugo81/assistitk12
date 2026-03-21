@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment, BulkUploadLog
 from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, EmailConfigForm, TicketForm, TitleForm, TicketContentForm
 from .utils import validate_password, validate_file_upload, encrypt_mail_password, decrypt_mail_password
-from .email_utils import send_ticket_notification
+from .email_utils import send_ticket_notification, send_temp_password_email, send_password_updated_email
 from main import db, login_manager, mail, limiter
 from flask_mail import Message
 from datetime import datetime, timedelta, timezone
@@ -664,6 +664,28 @@ def add_user():
 
 
 # ****************** Edit User Page *******************************
+# ****************** Send Temporary Password (AJAX) *******************************
+@routes_blueprint.route('/send_temp_password/<int:user_id>', methods=['POST'])
+@login_required
+def send_temp_password(user_id):
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+
+    user = User.query.get_or_404(user_id)
+    temp_password = secrets.token_urlsafe(12)
+
+    try:
+        send_temp_password_email(user, temp_password)
+    except Exception:
+        return jsonify({'success': False, 'message': 'Failed to send email. Check your SMTP configuration.'}), 500
+
+    user.password = generate_password_hash(temp_password)
+    user.must_change_password = True
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': f'Temporary password sent to {user.email}'})
+
+
 @routes_blueprint.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 def edit_user(user_id):
@@ -713,6 +735,7 @@ def edit_user(user_id):
             user.role_id = form.role_id.data
             changes_made = True
         # Validate and update password only if provided
+        password_changed = False
         if form.password.data:
             password = form.password.data
             is_valid, error_message = validate_password(password)
@@ -720,10 +743,14 @@ def edit_user(user_id):
                 flash(error_message, 'danger')
                 return render_template('edit_user.html', form=form, user=user)
             user.password = generate_password_hash(password)
+            user.must_change_password = False
             changes_made = True
+            password_changed = True
         # Commit changes only if any were made
         if changes_made:
             db.session.commit()
+            if password_changed:
+                send_password_updated_email(user)
             flash('User updated successfully!', 'success')
             return redirect(url_for('routes.users'))
         else:

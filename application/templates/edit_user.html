@@ -99,15 +99,62 @@
                     <!-- Section: Security -->
                     <p class="text-uppercase text-sm text-muted fw-bold mb-2 mt-5">Security</p>
                     <hr class="mt-0 mb-3">
-                    <div class="row g-3">
+                    <div class="row g-3 align-items-end">
                         <div class="col-12 col-sm-6 col-lg-4">
                             {{ form.password.label(class="form-label") }}
-                            {{ form.password(class="form-control", type="password") }}
-                            <p class="form-text text-muted mt-1">Leave blank to keep the current password.</p>
+                            {{ form.password(class="form-control", type="password", id="customPassword") }}
+                            <p class="form-text text-muted mt-1">Leave blank to keep the current password. Saving a custom password will notify the user by email.</p>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4 pb-1">
+                            <p class="form-label">Temporary Password</p>
+                            <button type="button" id="sendTempPasswordBtn" class="btn btn-warning mb-0">
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">lock_reset</i>
+                                Send Temporary Password
+                            </button>
+                            <p class="form-text text-muted mt-1">Generates a random password, emails it to the user, and requires them to change it on first login.</p>
+                            <div id="tempPasswordResult" class="mt-2" style="display:none;"></div>
                         </div>
                     </div>
 
                 </form>
+
+<script>
+document.getElementById('sendTempPasswordBtn').addEventListener('click', function () {
+    if (!confirm('This will reset the user\'s password and send them a temporary one by email. Continue?')) return;
+
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="material-symbols-rounded position-relative me-1" style="font-size:1rem;vertical-align:middle;">hourglass_top</i> Sending...';
+    const resultDiv = document.getElementById('tempPasswordResult');
+    resultDiv.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+    fetch('{{ url_for("routes.send_temp_password", user_id=user.id) }}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        resultDiv.style.display = 'block';
+        if (data.success) {
+            resultDiv.innerHTML = '<div class="alert alert-success text-sm py-2 mb-0">' + data.message + '</div>';
+        } else {
+            resultDiv.innerHTML = '<div class="alert alert-danger text-sm py-2 mb-0">' + data.message + '</div>';
+        }
+    })
+    .catch(() => {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="alert alert-danger text-sm py-2 mb-0">An error occurred. Please try again.</div>';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="material-symbols-rounded position-relative me-1" style="font-size:1rem;vertical-align:middle;">lock_reset</i> Send Temporary Password';
+    });
+});
+</script>
             </div>
         </div>
     </div>
