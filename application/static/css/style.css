@@ -35,6 +35,22 @@ html * {
   -moz-osx-font-smoothing: grayscale;
 }
 
+spacer {
+  height: 1rem;
+  display: block;
+}
+
+input.read-only{
+  background: rgb(224, 224, 224) !important;
+  color: #000000 !important;
+}
+
+.row-checked-out {
+  border-left: 4px solid #532093 !important;
+}
+.row-checked-in {
+  border-left: 4px solid #F09738 !important;
+}
 
 /* Global Styles */
 body {
@@ -156,12 +172,6 @@ h6, .h6 {
   color: #808080 !important;
 }
 
-/* Default styles for .col-12 */
-.col-12 {
-  flex: 0 0 100%;
-  min-width: 80%;
-  margin: 0 auto; /* Center the container horizontally */
-}
 
 .main-card-box {
   min-height: 82vh;
@@ -171,6 +181,7 @@ a.user-welcome{
   font-size: 1.2rem;
   font-weight: 700;
   color: #143448;
+  text-transform: capitalize;
 }
 
 /* Components */
@@ -2229,7 +2240,7 @@ body.dark-version {
 
 .input-group.input-group-outline .form-control {
   background: none;
-  border: 1px solid #d2d6da;
+  border: .5px solid #737373 !important;
   border-radius: 0.375rem;
   border-top-left-radius: 0.375rem !important;
   border-bottom-left-radius: 0.375rem !important;
@@ -2417,6 +2428,7 @@ body.dark-version {
 
 .form-select {
   transition: 0.2s ease;
+  border: .5px solid #737373 !important;
 }
 
 /* input forms labels text */
@@ -2431,7 +2443,6 @@ label,
 }
 
 .input-group .form-label {
-
   top: 0.6125rem;
   margin-left: 0;
   transition: 0.2s ease all;
@@ -2439,6 +2450,7 @@ label,
 
 .form-control {
   width: 350px;
+  border: .5px solid #737373 !important;
 }
 
 .form-control.is-invalid {
@@ -4427,10 +4439,12 @@ hr.horizontal.gray-light {
   text-transform: capitalize;
   letter-spacing: 0px;
   border-bottom: 1px solid #e5e5e5;
+  background: var(--bs-main-color-primary);
 }
 
 .table th {
   font-weight: 600;
+  color:#ffffff !important;
 }
 
 .table td .progress {
@@ -4537,7 +4551,7 @@ hr.horizontal.gray-light {
 
 
 .reset-button-box:hover{
-    background-color: #000;
+    background-color: var(--bs-main-color-primary) !important;
     color: #fff !important;
 }
 
@@ -4549,6 +4563,7 @@ hr.horizontal.gray-light {
 }
 
 .add-table-button{
+  background-color: var(--bs-main-color-primary);
   padding: 1em 1.7em;
   font-weight: 600;
 }
@@ -4560,7 +4575,7 @@ hr.horizontal.gray-light {
 
 .table-button-edit:hover{
   font-weight: 600;
-  background-color: #000;
+  background-color: var(--bs-main-color-primary) !important;
   color: #fff !important;
 }
 
@@ -4607,9 +4622,8 @@ input.search-field-box.form-control{
   font-weight: 400;
   color: #404040;
   appearance: none;
-  background-color: transparent;
   background-clip: padding-box;
-  border: 1px solid #d2d6da;
+  border: .5px solid #737373 !important;
   border-radius: 0.375rem;
   transition: 0.2s ease;
   margin-bottom: 25px;
@@ -4620,7 +4634,7 @@ input.search-field-box.form-control{
 
 select.form-select-box.form-select{
   padding-left:2%;
-  border:#E5E5E5 1px solid;
+  border: .5px solid #737373 !important;
 }
 
 .card-body-gray{
@@ -4640,35 +4654,25 @@ background-color: #f5f5f5;
   cursor: pointer;
 }
 
-/* Bulk Upload drag-and-drop zone */
-.upload-drop-zone {
-  border: 2px dashed #ccc;
-  border-radius: 0.75rem;
-  padding: 2.5rem 1.5rem;
-  text-align: center;
-  cursor: pointer;
-  background-color: #fafafa;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+
+
+/* login page */
+/* device comments */
+.scroll-btn{
+    position:absolute;
+    right:18px;
+    width:40px;
+    z-index:10;
+    background:#aaabad;
 }
 
-.upload-drop-zone:hover,
-.upload-drop-zone-active {
-  border-color: var(--bs-main-color-secondary);
-  background-color: #f0f4f8;
+.scroll-up{
+    top:3px;
 }
 
-.upload-drop-zone-icon {
-  font-size: 3rem;
-  color: #aaa;
-  display: block;
-  margin-bottom: 0.5rem;
+.scroll-down{
+    bottom:16px;
 }
-
-
-
-
-
-
 
 
 
@@ -4783,7 +4787,7 @@ background-color: #f5f5f5;
   color: #000;
   font-size: 16px;
   border-radius: 10px;
-  border: 2px solid #c9c9c9;
+  border:var(--bs-main-color-secondary) .5px solid;
   padding: 0 20px;
   transition: all 0.2s ease-in-out;
   width: 100%;
@@ -4937,4 +4941,10 @@ background-color: #f5f5f5;
 .btn-onoff input:checked ~ span:after{
 	content: '';
 	left: 51px;
+}
+
+
+.table-highlight-row:hover{
+  transition: background-color 0.2s ease-in-out;
+	background-color: rgba(0,0,0,.06) !important; 
 }

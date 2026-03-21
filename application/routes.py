@@ -1613,6 +1613,46 @@ def edit_ticket(ticket_id):
 
 
 
+# ****************** Add Comment (AJAX) *******************************
+@routes_blueprint.route('/add_comment/<int:ticket_id>', methods=['POST'])
+@login_required
+def add_comment(ticket_id):
+    ticket = Ticket.query.get_or_404(ticket_id)
+
+    if current_user.role_id not in [1, 2, 3] and current_user.id != ticket.user_id:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+
+    content = request.form.get('content', '').strip()
+    if not content:
+        return jsonify({'success': False, 'message': 'Comment cannot be empty'}), 400
+
+    try:
+        comment = Ticket_content(
+            ticket_id=ticket.id,
+            content=content,
+            cnt_created_at=datetime.now(timezone.utc),
+            user_id=current_user.id
+        )
+        db.session.add(comment)
+        ticket.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"add_comment failed: {e}")
+        return jsonify({'success': False, 'message': 'Database error saving comment'}), 500
+
+    send_ticket_notification('comment', ticket, commenter=current_user)
+
+    return jsonify({
+        'success': True,
+        'comment': {
+            'author': current_user.get_full_name(),
+            'date': comment.cnt_created_at.strftime('%m-%d-%Y %H:%M'),
+            'content': content
+        }
+    })
+
+
 # ****************** Delete Ticket Page *******************************
 @routes_blueprint.route('/delete_ticket/<int:ticket_id>', methods=['POST'])
 @login_required

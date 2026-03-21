@@ -101,7 +101,7 @@
               </thead>
               <tbody>
                 {% for user in users %}
-                <tr class="{{ 'text-muted' if user.status == 'Inactive' else '' }}">
+                <tr class="table-highlight-row {{ 'text-muted' if user.status == 'Inactive' else '' }}">
                   <td>
                     <div class="d-flex px-2 py-1">
                       <div>

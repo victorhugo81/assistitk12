@@ -22,7 +22,7 @@
                             <!-- Secondary Menu and Form -->
                             <div class="container-fluid my-3 py-3">
                                 <!-- Form for Editing Ticket -->
-                                <form method="POST" action="{{ url_for('routes.edit_ticket', ticket_id=ticket.id) }}"
+                                <form id="ticket-form" method="POST" action="{{ url_for('routes.edit_ticket', ticket_id=ticket.id) }}"
                                     enctype="multipart/form-data">
                                     {{ form.hidden_tag() }}
 
@@ -185,11 +185,31 @@
 
 
 
-                                                <!-- Add Comment Button and File Upload -->
-                                                <div class="input-group input-group-outline justify-content-end gap-2">
-                                                    <button type="button" id="add-content" class="btn btn-warning">Add
-                                                        Comments</button>
-                                                </div>
+                                                <!-- Add Comment -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+
+            <!-- Add Comment -->
+            <div id="comment-form-wrapper" class="mt-3 w-100" style="display:none;">
+                <textarea id="comment-input"
+                          class="form-control mb-2 w-100"
+                          rows="6"
+                          placeholder="Write your comment..."></textarea>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" id="cancel-comment" class="btn reset-button-box shadow-dark">Cancel</button>
+                    <button type="button" id="submit-comment" class="btn bg-gradient-main">Post Comment</button>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-2">
+                <button type="button" id="add-content" class="btn btn-warning">Add Comment</button>
+            </div>
+
+        </div>
+    </div>
+</div>
 
 
                                             </div>
@@ -241,7 +261,7 @@
                                     <!-- Submit and Back Buttons -->
                                     <div class="input-group input-group-outline justify-content-end gap-2">
                                         {{ form.submit(class="btn bg-gradient-main") }}
-                                        <a class="btn reset-button-box shadow-dark"
+                                        <a id="back-btn" class="btn reset-button-box shadow-dark"
                                             href="{{ url_for('routes.tickets') }}">Back</a>
                                     </div>
                                 </form>
@@ -252,29 +272,67 @@
                 </div>
             </div>
 
-            <!-- Hidden input to store username -->
-            <input type="hidden" id="current-username">
-
-                        <!-- JavaScript for Dynamic Comments -->
+                        <!-- JavaScript for Comments -->
 <script>
-    document.getElementById('add-content').addEventListener('click', function () {
-        const contentsDiv = document.getElementById('ticket-contents');
-        const username = document.getElementById('current-username').value;
+    const addBtn     = document.getElementById('add-content');
+    const formWrap   = document.getElementById('comment-form-wrapper');
+    const cancelBtn  = document.getElementById('cancel-comment');
+    const submitBtn  = document.getElementById('submit-comment');
+    const commentInput = document.getElementById('comment-input');
+    const contentsDiv  = document.getElementById('ticket-contents');
+    const csrfToken  = document.querySelector('input[name="csrf_token"]').value;
 
-        // Create a new comment input area
-        const newContentDiv = document.createElement('div');
-        newContentDiv.classList.add('input-group', 'input-group-outline', 'my-3');
-        newContentDiv.innerHTML = `
-            <span class="input-group-text">${username}</span>
-            <textarea name="contents-0-content" class="form-control" style="height: 100px;" required></textarea>
-        `;
+    addBtn.addEventListener('click', function () {
+        formWrap.style.display = 'block';
+        addBtn.style.display = 'none';
+        commentInput.focus();
+    });
 
-        // Append the comment input area to the DOM
-        contentsDiv.appendChild(newContentDiv);
+    cancelBtn.addEventListener('click', function () {
+        commentInput.value = '';
+        formWrap.style.display = 'none';
+        addBtn.style.display = 'inline-block';
+    });
 
-        // Disable or hide the Add Comments button
-        const addButton = document.getElementById('add-content');
-        addButton.style.display = 'none'; // Hides the button after one use
+    submitBtn.addEventListener('click', function () {
+        const content = commentInput.value.trim();
+        if (!content) {
+            commentInput.classList.add('is-invalid');
+            return;
+        }
+        commentInput.classList.remove('is-invalid');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Posting...';
+
+        const formData = new FormData();
+        formData.append('content', content);
+
+        fetch('{{ url_for("routes.add_comment", ticket_id=ticket.id) }}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+        })
+        .then(r => {
+            if (!r.ok) {
+                return r.text().then(t => { throw new Error(t); });
+            }
+            return r.json();
+        })
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.message || 'Failed to post comment.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Post Comment';
+            }
+        })
+        .catch(err => {
+            console.error('add_comment error:', err);
+            alert('An error occurred. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Post Comment';
+        });
     });
 </script>
 
