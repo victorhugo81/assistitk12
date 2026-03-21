@@ -47,6 +47,16 @@ def create_app(config_name='default'):
 
     migrate = Migrate(app, db)
 
+    # Jinja filter: convert UTC datetime to local system time
+    from datetime import timezone as _tz
+    def localtime(dt, fmt='%m-%d-%Y %H:%M'):
+        if dt is None:
+            return ''
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=_tz.utc)
+        return dt.astimezone().strftime(fmt)
+    app.jinja_env.filters['localtime'] = localtime
+
     # Register blueprint
     from application.routes import routes_blueprint
     app.register_blueprint(routes_blueprint)

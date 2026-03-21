@@ -171,7 +171,7 @@
                                                             <p><strong>
                                                                     {% if comment.user %}
                                                                     {{ comment.user.get_full_name() }} </strong><br>
-                                                                {{ comment.cnt_created_at.strftime('%m-%d-%Y %H:%M') }}
+                                                                {{ comment.cnt_created_at | localtime }}
                                                                 {% endif %}
                                                                 <br>
                                                                 {{ comment.content }}

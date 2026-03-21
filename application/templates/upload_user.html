@@ -82,7 +82,7 @@
                                 <i class="material-symbols-rounded text-muted me-2" style="font-size:1.2rem;">description</i>
                                 <div>
                                     <h6 class="mb-0 text-sm">{{ log.filename }}</h6>
-                                    <p class="text-xs text-secondary mb-0">{{ log.uploaded_at.strftime('%m/%d/%Y %I:%M %p') }}</p>
+                                    <p class="text-xs text-secondary mb-0">{{ log.uploaded_at | localtime('%m/%d/%Y %I:%M %p') }}</p>
                                 </div>
                             </div>
                         </td>
