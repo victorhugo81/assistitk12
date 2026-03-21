@@ -39,7 +39,7 @@
               </a>
             </li>
             <li class="nav-item secondary-nav pt-2">
-              <a class="nav-link text-dark d-flex" href="{{ url_for('routes.upload_users') }}">
+              <a class="nav-link text-dark d-flex" data-scroll="" href="#bulk-upload">
                 <i class="material-symbols-rounded text-lg me-2">upload_file</i>
                 <span class="text-sm">Bulk Upload Users</span>
               </a>
@@ -166,7 +166,7 @@
 
     <!-- Bulk Upload -->
     <div class="card-body align-items-center">
-        <div class="container-md align-items-center">
+        <div class="container-md align-items-center"  id="bulk-upload">
             <h5 class="mb-1">Bulk Upload Users</h5>
             <p class="text-sm text-muted mb-3">Upload a CSV file to create or update multiple users at once.</p>
             <a href="{{ url_for('routes.upload_users') }}" class="btn bg-gradient-dark mb-0">
