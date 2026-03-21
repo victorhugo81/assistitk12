@@ -752,7 +752,7 @@ def delete_user(user_id):
 def upload_users():
     is_admin()
     logs = BulkUploadLog.query.order_by(BulkUploadLog.uploaded_at.desc()).all()
-    return render_template('upload_user.html',
+    return render_template('bulk_upload_users.html',
                            logs=logs,
                            current_page_name='Bulk Upload Users')
 

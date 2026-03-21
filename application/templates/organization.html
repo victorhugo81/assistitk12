@@ -39,7 +39,7 @@
               </a>
             </li>
             <li class="nav-item secondary-nav pt-2">
-              <a class="nav-link text-dark d-flex" data-scroll="" href="#bulk-upload">
+              <a class="nav-link text-dark d-flex" href="{{ url_for('routes.upload_users') }}">
                 <i class="material-symbols-rounded text-lg me-2">upload_file</i>
                 <span class="text-sm">Bulk Upload Users</span>
               </a>
@@ -165,20 +165,14 @@
     <hr class="mx-4">
 
     <!-- Bulk Upload -->
-    <div class="card-body align-items-center" id="bulk-upload">
+    <div class="card-body align-items-center">
         <div class="container-md align-items-center">
             <h5 class="mb-1">Bulk Upload Users</h5>
-            <p class="text-sm text-muted mb-3">Upload a CSV file to create or update multiple users at once. View upload history and manage imports on the dedicated upload page.</p>
-            <div class="d-flex align-items-center gap-2">
-                <a href="{{ url_for('routes.upload_users') }}" class="btn bg-gradient-dark mb-0">
-                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">upload_file</i>
-                    Bulk Upload
-                </a>
-                <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
-                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">download</i>
-                    Download Template
-                </a>
-            </div>
+            <p class="text-sm text-muted mb-3">Upload a CSV file to create or update multiple users at once.</p>
+            <a href="{{ url_for('routes.upload_users') }}" class="btn bg-gradient-dark mb-0">
+                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">upload_file</i>
+                Go to Bulk Upload
+            </a>
         </div>
     </div>
     <!-- End Bulk Upload -->
