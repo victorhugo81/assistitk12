@@ -7,10 +7,10 @@ from .models import User, Role, Site, Notification, Organization, Ticket, Title,
 from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, EmailConfigForm, TicketForm, TitleForm, TicketContentForm
 from .utils import validate_password, validate_file_upload, encrypt_mail_password, decrypt_mail_password
 from .email_utils import send_ticket_notification, send_temp_password_email, send_password_updated_email
-from main import db, login_manager, mail, limiter
+from main import db, login_manager, mail, limiter, scheduler
 from flask_mail import Message
 from datetime import datetime, timedelta, timezone
-import time, os, re, csv, logging, secrets
+import time, os, re, csv, logging, secrets, ftplib, io, socket
 from sqlalchemy.sql import func
 from flask_caching import Cache
 from sqlalchemy import case
@@ -773,14 +773,64 @@ def delete_user(user_id):
 
 
 
+SITE_REQUIRED = ['site_name', 'site_GU', 'site_cds', 'site_code', 'site_abb', 'site_address', 'site_type']
+
+def _process_sites_rows(rows):
+    """Upsert sites from a list of CSV dicts. Returns (added, updated). Raises ValueError on bad data."""
+    added = updated = 0
+    for i, row in enumerate(rows, start=2):
+        missing = [f for f in SITE_REQUIRED if not row.get(f, '').strip()]
+        if missing:
+            raise ValueError(f'Row {i} is missing required fields: {", ".join(missing)}')
+        name = row['site_name'].strip()
+        site = Site.query.filter_by(site_name=name).first()
+        if site:
+            site.site_GU      = row['site_GU'].strip()
+            site.site_cds     = row['site_cds'].strip()
+            site.site_code    = row['site_code'].strip()
+            site.site_abb     = row['site_abb'].strip()
+            site.site_address = row['site_address'].strip()
+            site.site_type    = row['site_type'].strip()
+            updated += 1
+        else:
+            db.session.add(Site(
+                site_name    = name,
+                site_GU      = row['site_GU'].strip(),
+                site_cds     = row['site_cds'].strip(),
+                site_code    = row['site_code'].strip(),
+                site_abb     = row['site_abb'].strip(),
+                site_address = row['site_address'].strip(),
+                site_type    = row['site_type'].strip(),
+            ))
+            added += 1
+    return added, updated
+
+
 # ****************** Upload Users Page *******************************
 @routes_blueprint.route('/upload-users', methods=['GET'])
 @login_required
 def upload_users():
     is_admin()
-    logs = BulkUploadLog.query.order_by(BulkUploadLog.uploaded_at.desc()).all()
+    all_logs   = BulkUploadLog.query.order_by(BulkUploadLog.uploaded_at.desc()).all()
+    user_logs  = [l for l in all_logs if not l.filename.startswith('[Sites]')]
+    site_logs  = [l for l in all_logs if l.filename.startswith('[Sites]')]
+    org  = Organization.query.get(1)
+    ftp_host_plain     = ''
+    ftp_username_plain = ''
+    schedule_time = ''
+    if org:
+        key = current_app.config['SECRET_KEY']
+        ftp_host_plain     = decrypt_mail_password(org.ftp_host_enc or '', key)
+        ftp_username_plain = decrypt_mail_password(org.ftp_username_enc or '', key)
+        if org.ftp_schedule_hour is not None:
+            schedule_time = f"{org.ftp_schedule_hour:02d}:{org.ftp_schedule_minute or 0:02d}"
     return render_template('bulk_upload_users.html',
-                           logs=logs,
+                           user_logs=user_logs,
+                           site_logs=site_logs,
+                           org=org,
+                           ftp_host_plain=ftp_host_plain,
+                           ftp_username_plain=ftp_username_plain,
+                           ftp_schedule_time=schedule_time,
                            current_page_name='Bulk Upload Users')
 
 
@@ -885,6 +935,306 @@ def bulk_upload_users():
     return redirect(url_for('routes.upload_users'))
 
 
+# ****************** FTP Bulk Upload Users *******************************
+@routes_blueprint.route('/ftp-settings/save', methods=['POST'])
+@login_required
+def ftp_save_settings():
+    """Save FTP credentials and schedule settings into the Organization record."""
+    is_admin()
+    org = Organization.query.get_or_404(1)
+    key = current_app.config['SECRET_KEY']
+
+    # --- Credentials ---
+    raw_host = re.sub(r'^ftps?://', '', request.form.get('ftp_host', '').strip(), flags=re.IGNORECASE)
+    username = request.form.get('ftp_username', '').strip()
+    password = request.form.get('ftp_password', '').strip()
+    if raw_host:
+        org.ftp_host_enc = encrypt_mail_password(raw_host, key)
+    if username:
+        org.ftp_username_enc = encrypt_mail_password(username, key)
+    if password:
+        org.ftp_password_enc = encrypt_mail_password(password, key)
+    org.ftp_port    = int(request.form.get('ftp_port') or 21)
+    org.ftp_path    = request.form.get('ftp_path', '').strip() or None
+    org.ftp_use_tls = request.form.get('ftp_use_tls') == 'on'
+
+    # --- Schedule ---
+    schedule_enabled = request.form.get('ftp_schedule_enabled') == 'on'
+    org.ftp_schedule_enabled = schedule_enabled
+    if schedule_enabled:
+        schedule_time = (request.form.get('ftp_schedule_time') or '00:00').strip()
+        try:
+            hour, minute = map(int, schedule_time.split(':'))
+        except ValueError:
+            hour, minute = 0, 0
+        days_list = request.form.getlist('ftp_schedule_days')
+        all_days  = {'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'}
+        org.ftp_schedule_hour   = hour
+        org.ftp_schedule_minute = minute
+        org.ftp_schedule_days   = '*' if not days_list or set(days_list) >= all_days else ','.join(days_list)
+
+    db.session.commit()
+
+    # Sync APScheduler job
+    from application.scheduled_jobs import run_org_ftp_schedule
+    if schedule_enabled and org.ftp_schedule_hour is not None:
+        scheduler.add_job(
+            id='org_ftp_schedule',
+            func=run_org_ftp_schedule,
+            trigger='cron',
+            day_of_week=org.ftp_schedule_days,
+            hour=org.ftp_schedule_hour,
+            minute=org.ftp_schedule_minute,
+            replace_existing=True
+        )
+        flash('FTP settings and schedule saved.', 'success')
+    else:
+        try:
+            scheduler.remove_job('org_ftp_schedule')
+        except Exception:
+            pass
+        flash('FTP settings saved. Schedule disabled.', 'success')
+
+    return redirect(url_for('routes.upload_users') + '?tab=ftp')
+
+
+@routes_blueprint.route('/ftp-upload-users', methods=['POST'])
+@login_required
+def ftp_bulk_upload_users():
+    is_admin()
+
+    ftp_host     = re.sub(r'^ftps?://', '', request.form.get('ftp_host', '').strip(), flags=re.IGNORECASE)
+    ftp_port     = request.form.get('ftp_port', '21').strip()
+    ftp_username = request.form.get('ftp_username', '').strip()
+    ftp_path     = request.form.get('ftp_path', '').strip()
+    use_tls      = request.form.get('ftp_use_tls') == 'on'
+    ftp_password = request.form.get('ftp_password', '').strip()
+
+    # Fall back to saved org credentials (decrypt) if form fields are blank
+    org = Organization.query.get(1)
+    if org:
+        key = current_app.config['SECRET_KEY']
+        if not ftp_host and org.ftp_host_enc:
+            ftp_host = decrypt_mail_password(org.ftp_host_enc, key)
+        if not ftp_username and org.ftp_username_enc:
+            ftp_username = decrypt_mail_password(org.ftp_username_enc, key)
+        if not ftp_password and org.ftp_password_enc:
+            ftp_password = decrypt_mail_password(org.ftp_password_enc, key)
+        ftp_path = ftp_path or (org.ftp_path or '')
+        ftp_port = ftp_port or str(org.ftp_port or 21)
+        use_tls  = use_tls  or bool(org.ftp_use_tls)
+
+    if not all([ftp_host, ftp_username, ftp_path]):
+        flash('FTP host, username, and remote directory are required.', 'danger')
+        return redirect(url_for('routes.upload_users') + '?tab=ftp')
+
+    try:
+        port = int(ftp_port)
+    except ValueError:
+        flash('FTP port must be a valid number.', 'danger')
+        return redirect(url_for('routes.upload_users') + '?tab=ftp')
+
+    # Normalise: if the stored path still has a .csv filename (old format), strip it
+    if ftp_path.lower().endswith('.csv'):
+        import posixpath as _pp
+        ftp_path = _pp.dirname(ftp_path)
+    ftp_dir = ftp_path.rstrip('/')
+    users_path = f'{ftp_dir}/users.csv'
+    sites_path = f'{ftp_dir}/sites.csv'
+
+    users_added = users_updated = total_records = 0
+    sites_added = sites_updated = sites_total = 0
+
+    try:
+        ftp = ftplib.FTP_TLS() if use_tls else ftplib.FTP()
+        ftp.connect(ftp_host, port, timeout=30)
+        ftp.login(ftp_username, ftp_password)
+        if use_tls:
+            ftp.prot_p()
+
+        # --- Download and process sites.csv first ---
+        sites_buf = io.BytesIO()
+        try:
+            ftp.retrbinary(f'RETR {sites_path}', sites_buf.write)
+            sites_buf.seek(0)
+            site_rows   = list(csv.DictReader(sites_buf.read().decode('utf-8').splitlines()))
+            sites_total = len(site_rows)
+            sites_added, sites_updated = _process_sites_rows(site_rows)
+            db.session.commit()
+            db.session.add(BulkUploadLog(
+                filename='[FTP Sites] sites.csv',
+                uploaded_by_id=current_user.id,
+                total_records=sites_total,
+                users_added=sites_added,
+                users_updated=sites_updated,
+                status='success'
+            ))
+            db.session.commit()
+        except ftplib.error_perm:
+            pass  # sites.csv not found on server — skip silently
+
+        # --- Download and process users.csv ---
+        user_buf = io.BytesIO()
+        ftp.retrbinary(f'RETR {users_path}', user_buf.write)
+        ftp.quit()
+
+        user_buf.seek(0)
+        rows = list(csv.DictReader(user_buf.read().decode('UTF-8').splitlines()))
+        total_records = len(rows)
+
+        for row in rows:
+            if not all([row.get('first_name'), row.get('last_name'), row.get('email'),
+                        row.get('role_id'), row.get('site_name'), row.get('rm_num')]):
+                raise ValueError('Some rows in the CSV file are missing required fields.')
+
+            site = Site.query.filter_by(site_name=row['site_name']).first()
+            if not site:
+                raise ValueError(f"Site '{row['site_name']}' not found. Please verify the CSV file.")
+
+            existing_user = User.query.filter_by(email=row['email']).first()
+            if existing_user:
+                existing_user.rm_num  = row.get('rm_num', existing_user.rm_num)
+                existing_user.role_id = row['role_id']
+                existing_user.site_id = site.id
+                users_updated += 1
+            else:
+                db.session.add(User(
+                    first_name=row['first_name'],
+                    middle_name=row.get('middle_name', None),
+                    last_name=row['last_name'],
+                    email=row['email'],
+                    status=row.get('status', 'Active'),
+                    password=generate_password_hash(secrets.token_urlsafe(16)),
+                    must_change_password=True,
+                    rm_num=row.get('rm_num', None),
+                    role_id=row['role_id'],
+                    site_id=site.id
+                ))
+                users_added += 1
+
+        db.session.commit()
+
+        db.session.add(BulkUploadLog(
+            filename='[FTP] users.csv',
+            uploaded_by_id=current_user.id,
+            total_records=total_records,
+            users_added=users_added,
+            users_updated=users_updated,
+            status='success'
+        ))
+        db.session.commit()
+
+        msg = f'FTP import successful: {users_added} users added, {users_updated} updated.'
+        if sites_total:
+            msg += f' Sites: {sites_added} added, {sites_updated} updated.'
+        flash(msg, 'success')
+
+    except (ftplib.Error, OSError, EOFError, UnicodeDecodeError, ValueError) as e:
+        db.session.rollback()
+        if isinstance(e, socket.gaierror):
+            friendly = f"Cannot reach FTP host '{ftp_host}'. Check that the hostname is correct and the server is reachable."
+        elif isinstance(e, ConnectionRefusedError):
+            friendly = f"Connection refused by '{ftp_host}:{port}'. Check the port number and that the FTP service is running."
+        elif isinstance(e, TimeoutError):
+            friendly = f"Connection to '{ftp_host}' timed out. The server may be down or blocked by a firewall."
+        elif isinstance(e, ftplib.error_perm):
+            msg_lower = str(e).lower()
+            if any(code in str(e) for code in ('530', '331', '332')):
+                friendly = 'FTP login failed. Check your username and password.'
+            else:
+                friendly = f'FTP error: {e}'
+        else:
+            friendly = str(e)
+        try:
+            db.session.add(BulkUploadLog(
+                filename='[FTP] users.csv',
+                uploaded_by_id=current_user.id,
+                total_records=total_records,
+                users_added=users_added,
+                users_updated=users_updated,
+                status='error',
+                error_message=friendly
+            ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        flash(friendly, 'danger')
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'FTP bulk upload unexpected error: {e}', exc_info=True)
+        flash('An unexpected error occurred during the FTP import.', 'danger')
+
+    return redirect(url_for('routes.upload_users'))
+
+
+# ****************** Bulk Upload Sites (CSV) *******************************
+@routes_blueprint.route('/bulk-upload-sites', methods=['POST'])
+@login_required
+def bulk_upload_sites():
+    is_admin()
+
+    if 'csvFile' not in request.files:
+        flash('No file selected.', 'danger')
+        return redirect(url_for('routes.upload_users') + '?tab=sites')
+
+    file = request.files['csvFile']
+    if not file or file.filename == '':
+        flash('No file selected.', 'danger')
+        return redirect(url_for('routes.upload_users') + '?tab=sites')
+
+    if not file.filename.lower().endswith('.csv'):
+        flash('Invalid file format. Please upload a CSV file.', 'danger')
+        return redirect(url_for('routes.upload_users') + '?tab=sites')
+
+    sites_added = sites_updated = total_records = 0
+    filename = secure_filename(file.filename)
+
+    try:
+        stream = file.read().decode('utf-8')
+        rows = list(csv.DictReader(stream.splitlines()))
+        total_records = len(rows)
+        if total_records == 0:
+            flash('The CSV file is empty.', 'warning')
+            return redirect(url_for('routes.upload_users') + '?tab=sites')
+
+        sites_added, sites_updated = _process_sites_rows(rows)
+        db.session.commit()
+
+        db.session.add(BulkUploadLog(
+            filename=f'[Sites] {filename}',
+            uploaded_by_id=current_user.id,
+            total_records=total_records,
+            users_added=sites_added,
+            users_updated=sites_updated,
+            status='success'
+        ))
+        db.session.commit()
+        flash(f'Sites import successful: {sites_added} added, {sites_updated} updated.', 'success')
+
+    except (UnicodeDecodeError, ValueError) as e:
+        db.session.rollback()
+        db.session.add(BulkUploadLog(
+            filename=f'[Sites] {filename}',
+            uploaded_by_id=current_user.id,
+            total_records=total_records,
+            users_added=sites_added,
+            users_updated=sites_updated,
+            status='error',
+            error_message=str(e)
+        ))
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        flash(f'Sites import failed: {e}', 'danger')
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Bulk upload sites unexpected error: {e}', exc_info=True)
+        flash('An unexpected error occurred during the sites import.', 'danger')
+
+    return redirect(url_for('routes.upload_users') + '?tab=sites')
 
 
 # *********************************************************************
@@ -1409,7 +1759,7 @@ def add_ticket():
 
         # Commit all changes at once
         db.session.commit()
-        send_ticket_notification('created', ticket)
+        send_ticket_notification('created', ticket, initial_comment=initial_comment or '')
         flash('Ticket created successfully!', 'success')
         return redirect(url_for('routes.tickets'))
     
@@ -1534,16 +1884,17 @@ def edit_ticket(ticket_id):
             ticket.assigned_to_id = form.assigned_to_id.data
             changes_made = True
 
-        # Ensure the escalate checkbox is correctly updated
-        if 'escalate' in request.form:
-            escalate_value = request.form.get('escalate') == '1'  # Convert to boolean
-        else:
-            escalate_value = False  # Ensure it's set to False when not checked
+        # Only Admin, Specialist, and Technician can escalate/de-escalate
+        if current_user.role_id in [1, 2, 3]:
+            if 'escalate' in request.form:
+                escalate_value = request.form.get('escalate') == '1'
+            else:
+                escalate_value = False
 
-        if ticket.escalated != escalate_value:
-            ticket.escalated = escalate_value
-            changes_made = True
-            flash(f'Ticket {"escalated" if ticket.escalated else "de-escalated"} successfully!', 'success')
+            if ticket.escalated != escalate_value:
+                ticket.escalated = escalate_value
+                changes_made = True
+                flash(f'Ticket {"escalated" if ticket.escalated else "de-escalated"} successfully!', 'success')
 
             
         # Handle file upload
@@ -1629,7 +1980,8 @@ def edit_ticket(ticket_id):
             if bool(ticket.escalated) != old_escalated:
                 send_ticket_notification('escalated', ticket, escalated=bool(ticket.escalated))
             if new_comments:
-                send_ticket_notification('comment', ticket, commenter=current_user)
+                send_ticket_notification('comment', ticket, commenter=current_user,
+                                         comment_text=new_comments[-1].content)
 
             flash('Ticket updated successfully!', 'success')
         else:
@@ -1668,7 +2020,7 @@ def add_comment(ticket_id):
         current_app.logger.error(f"add_comment failed: {e}")
         return jsonify({'success': False, 'message': 'Database error saving comment'}), 500
 
-    send_ticket_notification('comment', ticket, commenter=current_user)
+    send_ticket_notification('comment', ticket, commenter=current_user, comment_text=content)
 
     return jsonify({
         'success': True,

@@ -17,4 +17,5 @@ dependencies = [
     "flask-wtf>=1.2.2",
     "pymysql>=1.1.2",
     "flask-limiter>=4.1.1",
+    "flask-apscheduler>=1.13.1",
 ]

@@ -34,7 +34,41 @@
 
             <h5 class="mt-4 mb-3">
                 <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">table_chart</i>
-                CSV Columns
+                sites.csv
+            </h5>
+                    <!-- Sites CSV Columns reference -->
+                    <div class="table-responsive mb-4">
+                        <table class="table table-bordered table-sm text-sm align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="text-uppercase text-xxs font-weight-bolder ps-3">Column</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder">Required</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for col, desc in [
+                                    ('site_name',    'Unique site name'),
+                                    ('site_GU',      'Global unique identifier (UUID)'),
+                                    ('site_cds',     'CDS code'),
+                                    ('site_code',    'Short site code'),
+                                    ('site_abb',     'Site abbreviation'),
+                                    ('site_address', 'Physical address'),
+                                    ('site_type',    'e.g. Elementary, Middle, High, District Office')
+                                ] %}
+                                <tr>
+                                    <td class="ps-3 font-weight-bold">{{ col }}</td>
+                                    <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                                    <td class="text-muted">{{ desc }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+            <h5 class="mt-4 mb-3">
+                <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">table_chart</i>
+                users.csv
             </h5>
             <div class="table-responsive">
                 <table class="table table-bordered table-sm text-sm align-middle mb-0">
@@ -101,48 +135,296 @@
         </div>
     </div>
     <hr class="mx-4">
+                                <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">download</i>
+                                Download Template
+                            </a>
     <!-- End Instructions -->
 
-    <!-- Upload File Card -->
-    <div class="card-body align-items-center">
-        <div class="container-md align-items-center">
-            <h5 class="mb-1">
-                <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">upload_file</i>
-                Upload User Data File
-            </h5>
-            <p class="text-sm text-muted mb-3">Please click below or drag and drop the CSV file to upload.</p>
+    <!-- Import Tabs -->
+    <div class="card-body">
+        <div class="container-md">
 
-            <form action="{{ url_for('routes.bulk_upload_users') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <!-- Tab Nav -->
+            <ul class="nav nav-tabs mb-4" id="importTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="sites-tab" data-bs-toggle="tab" data-bs-target="#sites-pane"
+                            type="button" role="tab" aria-controls="sites-pane" aria-selected="false">
+                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">location_city</i>
+                        Sites
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv-pane"
+                            type="button" role="tab" aria-controls="csv-pane" aria-selected="true">
+                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">upload_file</i>
+                        Users
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ftp-tab" data-bs-toggle="tab" data-bs-target="#ftp-pane"
+                            type="button" role="tab" aria-controls="ftp-pane" aria-selected="false">
+                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">dns</i>
+                        FTP
+                    </button>
+                </li>
+            </ul>
 
-                <!-- Drag and Drop Zone -->
-                <div id="dropZone" style="
-                    border: 2px dashed #344767;
-                    border-radius: 12px;
-                    background-color: #f8f9fa;
-                    padding: 48px 24px;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: background-color 0.2s, border-color 0.2s;
-                ">
-                    <i class="material-symbols-rounded" style="font-size: 3rem; color: #344767;">upload_file</i>
-                    <p class="fw-bold mt-2 mb-1" style="font-size: 1.05rem;">Click or drag and drop your CSV file here</p>
-                    <p class="text-muted text-sm mb-0">Accepts <strong>.csv</strong> files only &mdash; maximum 10 MB</p>
-                    <input type="file" id="csvFile" name="csvFile" accept=".csv" required class="d-none">
-                    <div id="fileName" class="text-sm mt-3"></div>
+            <div class="tab-content" id="importTabContent">
+
+                <!-- CSV Upload Tab -->
+                <div class="tab-pane fade show active" id="csv-pane" role="tabpanel" aria-labelledby="csv-tab">
+                    <p class="text-sm text-muted mb-3">Click below or drag and drop a CSV file to upload.</p>
+
+                    <form action="{{ url_for('routes.bulk_upload_users') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Drag and Drop Zone -->
+                        <div id="dropZone" style="
+                            border: 2px dashed #344767;
+                            border-radius: 12px;
+                            background-color: #f8f9fa;
+                            padding: 48px 24px;
+                            text-align: center;
+                            cursor: pointer;
+                            transition: background-color 0.2s, border-color 0.2s;
+                        ">
+                            <i class="material-symbols-rounded" style="font-size: 3rem; color: #344767;">upload_file</i>
+                            <p class="fw-bold mt-2 mb-1" style="font-size: 1.05rem;">Click or drag and drop your CSV file here</p>
+                            <p class="text-muted text-sm mb-0">Accepts <strong>.csv</strong> files only &mdash; maximum 10 MB</p>
+                            <input type="file" id="csvFile" name="csvFile" accept=".csv" required class="d-none">
+                            <div id="fileName" class="text-sm mt-3"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">download</i>
+                                Download Template
+                            </a>
+                            <button type="submit" class="btn bg-gradient-dark" id="uploadBtn" disabled>Upload</button>
+                        </div>
+                    </form>
                 </div>
+                <!-- End CSV Upload Tab -->
 
-                <div class="d-flex justify-content-between mt-3">
-                    <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
-                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">download</i>
-                        Download Template
-                    </a>
-                    <button type="submit" class="btn bg-gradient-dark" id="uploadBtn" disabled>Upload</button>
+                <!-- FTP Tab -->
+                <div class="tab-pane fade" id="ftp-pane" role="tabpanel" aria-labelledby="ftp-tab">
+                    <p class="text-sm text-muted mb-3">
+                        Enter your FTP server details below. Click <strong>Save Settings</strong> to store them for future use, or <strong>Import Now</strong> to run an import immediately.
+                        {% if org and org.ftp_host_enc %}<span class="badge bg-gradient-success ms-1">Credentials saved</span>{% endif %}
+                    </p>
+
+                    <form id="ftpForm" method="POST" action="{{ url_for('routes.ftp_bulk_upload_users') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_host">FTP Host</label>
+                                <input type="text" class="form-control" id="ftp_host" name="ftp_host"
+                                       value="{{ ftp_host_plain }}"
+                                       placeholder="ftp.example.com" autocomplete="off">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_port">Port</label>
+                                <input type="number" class="form-control" id="ftp_port" name="ftp_port"
+                                       value="{{ org.ftp_port or 21 if org else 21 }}" min="1" max="65535">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_username">Username</label>
+                                <input type="text" class="form-control" id="ftp_username" name="ftp_username"
+                                       value="{{ ftp_username_plain }}"
+                                       placeholder="ftpuser" autocomplete="off">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_password">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="ftp_password" name="ftp_password"
+                                           placeholder="{{ '••••••• (saved)' if org and org.ftp_password_enc else '••••••••' }}"
+                                           autocomplete="new-password">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleFtpPwd"
+                                            tabindex="-1" aria-label="Toggle password visibility">
+                                        <i class="material-symbols-rounded" style="font-size:1rem; vertical-align:middle;" id="ftpPwdIcon">visibility</i>
+                                    </button>
+                                </div>
+                                {% if org and org.ftp_password_enc %}
+                                <div class="form-text text-xs text-muted">Leave blank to keep the saved password.</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_path">Remote Directory</label>
+                                <input type="text" class="form-control" id="ftp_path" name="ftp_path"
+                                       value="{{ org.ftp_path or '' if org else '' }}"
+                                       placeholder="/uploads/" autocomplete="off">
+                                <div class="form-text text-xs text-muted">Directory on the FTP server containing <code>users.csv</code> and <code>sites.csv</code>, e.g. <code>/data/</code></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="ftp_use_tls" name="ftp_use_tls"
+                                           {{ 'checked' if org and org.ftp_use_tls else '' }}>
+                                    <label class="form-check-label text-sm" for="ftp_use_tls">Use FTPS (FTP over TLS/SSL)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule section -->
+                        <hr class="my-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="font-weight-bold mb-0">
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">schedule</i>
+                                Automatic Schedule
+                            </h6>
+                            {% if org and org.ftp_schedule_enabled and org.ftp_last_run_at %}
+                            <small class="text-muted">
+                                Last run: {{ org.ftp_last_run_at | localtime('%m/%d/%Y %I:%M %p') }}
+                                {% if org.ftp_last_run_status == 'success' %}
+                                    <span class="badge badge-sm bg-gradient-success ms-1">Success</span>
+                                {% else %}
+                                    <span class="badge badge-sm bg-gradient-danger ms-1">Error</span>
+                                {% endif %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="ftp_schedule_enabled"
+                                           name="ftp_schedule_enabled"
+                                           {{ 'checked' if org and org.ftp_schedule_enabled else '' }}
+                                           onchange="document.getElementById('scheduleFields').classList.toggle('d-none', !this.checked)">
+                                    <label class="form-check-label text-sm font-weight-bold" for="ftp_schedule_enabled">
+                                        Enable automatic import
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="scheduleFields" {% if not (org and org.ftp_schedule_enabled) %}class="d-none"{% endif %}>
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label text-sm font-weight-bold" for="ftp_schedule_time">Run Time</label>
+                                        <input type="time" class="form-control" id="ftp_schedule_time"
+                                               name="ftp_schedule_time" value="{{ ftp_schedule_time }}">
+                                    </div>
+                                    <div class="col-md-9">
+                                        <label class="form-label text-sm font-weight-bold d-block">Days of Week</label>
+                                        <div class="d-flex flex-wrap gap-3 mt-1">
+                                            {% set active_days = (org.ftp_schedule_days or '*').split(',') if org else ['*'] %}
+                                            {% for day_val, day_label in [('mon','Mon'),('tue','Tue'),('wed','Wed'),('thu','Thu'),('fri','Fri'),('sat','Sat'),('sun','Sun')] %}
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="ftp_schedule_days" value="{{ day_val }}"
+                                                       id="sched_{{ day_val }}"
+                                                       {{ 'checked' if active_days == ['*'] or day_val in active_days else '' }}>
+                                                <label class="form-check-label text-sm" for="sched_{{ day_val }}">{{ day_label }}</label>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-3">
+                            <button type="button" class="btn btn-outline-dark" onclick="saveFtpSettings()">
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">save</i>
+                                Save Settings
+                            </button>
+                            <button type="submit" class="btn bg-gradient-dark">
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">cloud_download</i>
+                                Sync All Now
+                            </button>
+                        </div>
+                    </form>
+
                 </div>
-            </form>
+                <!-- End FTP Tab -->
+
+                <!-- Sites Tab -->
+                <div class="tab-pane fade" id="sites-pane" role="tabpanel" aria-labelledby="sites-tab">
+                    <p class="text-sm text-muted mb-3">Upload a CSV file to bulk create or update sites. Existing sites are matched by <strong>site_name</strong> and updated in place.</p>
+
+
+
+                    <form action="{{ url_for('routes.bulk_upload_sites') }}" method="POST" enctype="multipart/form-data" id="sitesUploadForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div id="sitesDropZone" style="border:2px dashed #344767;border-radius:12px;background-color:#f8f9fa;padding:48px 24px;text-align:center;cursor:pointer;transition:background-color 0.2s,border-color 0.2s;">
+                            <i class="material-symbols-rounded" style="font-size:3rem;color:#344767;">upload_file</i>
+                            <p class="fw-bold mt-2 mb-1" style="font-size:1.05rem;">Click or drag and drop your CSV file here</p>
+                            <p class="text-muted text-sm mb-0">Accepts <strong>.csv</strong> files only</p>
+                            <input type="file" id="sitesCsvFile" name="csvFile" accept=".csv" required class="d-none">
+                            <div id="sitesFileName" class="text-sm mt-3"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{{ url_for('static', filename='download/site_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem;vertical-align:middle;">download</i>
+                                Download Template
+                            </a>
+                            <button type="submit" class="btn bg-gradient-dark" id="sitesUploadBtn" disabled>Upload</button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <!-- Sites Upload Log -->
+                    <h6 class="font-weight-bold mb-3">
+                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem;vertical-align:middle;">history</i>
+                        Sites Upload Log
+                    </h6>
+                    <div class="table-responsive">
+                        <table class="table align-items-center mb-0 table-striped">
+                            <thead>
+                                <tr>
+                                    <th class="text-uppercase text-xxs font-weight-bolder">Date / File</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder">Uploaded By</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Total</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Added</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Updated</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if site_logs %}
+                                    {% for log in site_logs %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex px-2 py-1 align-items-center">
+                                                <i class="material-symbols-rounded text-muted me-2" style="font-size:1.2rem;">description</i>
+                                                <div>
+                                                    <h6 class="mb-0 text-sm">{{ log.filename }}</h6>
+                                                    <p class="text-xs text-secondary mb-0">{{ log.uploaded_at | localtime('%m/%d/%Y %I:%M %p') }}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <p class="text-xs font-weight-bold mb-0">
+                                                {% if log.uploader %}<i class="material-symbols-rounded position-relative me-1" style="font-size:0.9rem;vertical-align:middle;">person</i>{{ log.uploader.first_name }} {{ log.uploader.last_name }}{% else %}&mdash;{% endif %}
+                                            </p>
+                                        </td>
+                                        <td class="text-center align-middle"><span class="text-xs font-weight-bold">{{ log.total_records }}</span></td>
+                                        <td class="text-center align-middle"><span class="text-success text-xs font-weight-bold">{{ log.users_added }}</span></td>
+                                        <td class="text-center align-middle"><span class="text-info text-xs font-weight-bold">{{ log.users_updated }}</span></td>
+                                        <td class="text-center align-middle">
+                                            {% if log.status == 'success' %}
+                                                <span class="badge badge-sm bg-gradient-success">Success</span>
+                                            {% else %}
+                                                <span class="badge badge-sm bg-gradient-danger" data-bs-toggle="tooltip" data-bs-placement="left" title="{{ log.error_message }}">Error</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr><td colspan="6" class="text-center text-muted py-4">No site uploads yet.</td></tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- End Sites Tab -->
+
+            </div>
         </div>
     </div>
-    <!-- End Upload File Card -->
+    <!-- End Import Tabs -->
 
     <hr class="mx-4">
 
@@ -172,8 +454,8 @@
                 </tr>
             </thead>
             <tbody>
-                {% if logs %}
-                    {% for log in logs %}
+                {% if user_logs %}
+                    {% for log in user_logs %}
                     <tr>
                         <td>
                             <div class="d-flex px-2 py-1 align-items-center">
@@ -279,6 +561,55 @@ function handleFileSelect(file) {
     fileNameDisplay.innerHTML = '<span class="text-success"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">check_circle</i> ' + file.name + '</span>';
     uploadBtn.disabled = false;
 }
+
+// Sites CSV drag-and-drop
+const sitesDropZone = document.getElementById('sitesDropZone');
+const sitesCsvFile  = document.getElementById('sitesCsvFile');
+const sitesFileName = document.getElementById('sitesFileName');
+const sitesUploadBtn = document.getElementById('sitesUploadBtn');
+
+sitesDropZone.addEventListener('click', () => sitesCsvFile.click());
+sitesDropZone.addEventListener('dragover', (e) => { e.preventDefault(); sitesDropZone.style.backgroundColor = '#e9ecef'; sitesDropZone.style.borderColor = '#5e72e4'; });
+sitesDropZone.addEventListener('dragleave', () => { sitesDropZone.style.backgroundColor = '#f8f9fa'; sitesDropZone.style.borderColor = '#344767'; });
+sitesDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    sitesDropZone.style.backgroundColor = '#f8f9fa';
+    sitesDropZone.style.borderColor = '#344767';
+    if (e.dataTransfer.files.length > 0) { sitesCsvFile.files = e.dataTransfer.files; handleSitesFile(e.dataTransfer.files[0]); }
+});
+sitesCsvFile.addEventListener('change', () => { if (sitesCsvFile.files.length > 0) handleSitesFile(sitesCsvFile.files[0]); });
+function handleSitesFile(file) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        sitesFileName.innerHTML = '<span class="text-danger"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">error</i> Please select a CSV file.</span>';
+        sitesUploadBtn.disabled = true;
+        return;
+    }
+    sitesFileName.innerHTML = '<span class="text-success"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">check_circle</i> ' + file.name + '</span>';
+    sitesUploadBtn.disabled = false;
+}
+
+// FTP password toggle
+document.getElementById('toggleFtpPwd').addEventListener('click', () => {
+    const input = document.getElementById('ftp_password');
+    const icon  = document.getElementById('ftpPwdIcon');
+    input.type = input.type === 'password' ? 'text' : 'password';
+    icon.textContent = input.type === 'password' ? 'visibility' : 'visibility_off';
+});
+
+// Save FTP settings to Organization
+const FTP_SAVE_URL = "{{ url_for('routes.ftp_save_settings') }}";
+function saveFtpSettings() {
+    document.getElementById('ftpForm').action = FTP_SAVE_URL;
+    document.getElementById('ftpForm').submit();
+}
+
+// Activate the correct tab from ?tab=xxx query param
+(function () {
+    const params = new URLSearchParams(window.location.search);
+    const map = { ftp: 'ftp-tab', csv: 'csv-tab', sites: 'sites-tab' };
+    const tabId = map[params.get('tab')];
+    if (tabId) bootstrap.Tab.getOrCreateInstance(document.getElementById(tabId)).show();
+})();
 
 // Initialize tooltips
 var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));

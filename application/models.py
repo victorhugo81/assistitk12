@@ -16,6 +16,20 @@ class Organization(db.Model):
     mail_username = db.Column(db.String(255), nullable=True)
     mail_password = db.Column(db.String(255), nullable=True)
     mail_default_sender = db.Column(db.String(255), nullable=True)
+    # FTP configuration (host, username, password stored encrypted)
+    ftp_host_enc = db.Column(db.String(512), nullable=True)
+    ftp_port = db.Column(db.Integer, default=21, nullable=True)
+    ftp_username_enc = db.Column(db.String(512), nullable=True)
+    ftp_password_enc = db.Column(db.String(512), nullable=True)
+    ftp_path = db.Column(db.String(512), nullable=True)
+    ftp_use_tls = db.Column(db.Boolean, default=False, nullable=True)
+    # FTP schedule
+    ftp_schedule_enabled = db.Column(db.Boolean, default=False, nullable=True)
+    ftp_schedule_hour    = db.Column(db.Integer, nullable=True)
+    ftp_schedule_minute  = db.Column(db.Integer, default=0, nullable=True)
+    ftp_schedule_days    = db.Column(db.String(50), default='*', nullable=True)  # '*' or 'mon,tue,...'
+    ftp_last_run_at      = db.Column(db.DateTime, nullable=True)
+    ftp_last_run_status  = db.Column(db.String(20), nullable=True)
 
 
 class Notification(db.Model):
@@ -120,6 +134,7 @@ class Ticket_attachment(db.Model):
     attach_image = db.Column(db.String(255), nullable=False)  # This column should exist
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
 
 
 class BulkUploadLog(db.Model):

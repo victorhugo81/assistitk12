@@ -33,12 +33,15 @@ def send_ticket_notification(event, ticket, **kwargs):
             if assignee and assignee.email:
                 recipients = [assignee.email]
                 subject = f"New Ticket Assigned to You: #{ticket.id}"
+                initial_comment = kwargs.get('initial_comment', '').strip()
+                comment_section = f"\nDescription:\n{initial_comment}\n" if initial_comment else ''
                 body = (
                     f"Hi {assignee.first_name},\n\n"
                     f"A new ticket has been assigned to you.\n\n"
                     f"Ticket: {ticket_label}\n"
                     f"Status: {STATUS_LABELS.get(ticket.tck_status, ticket.tck_status)}\n"
-                    f"Submitted by: {creator.get_full_name()}\n\n"
+                    f"Submitted by: {creator.get_full_name()}\n"
+                    f"{comment_section}\n"
                     f"Please log in to the system to view and respond to this ticket.\n\n"
                     f"— AssistITK12 System"
                 )
@@ -93,28 +96,35 @@ def send_ticket_notification(event, ticket, **kwargs):
 
         elif event == 'comment':
             commenter = kwargs.get('commenter')
-            recipient_name = ''
-            if commenter and creator and commenter.id == creator.id:
-                # Creator commented → notify assignee
-                if assignee and assignee.email:
-                    recipients = [assignee.email]
-                    recipient_name = assignee.first_name
-            else:
-                # Tech/assignee commented → notify creator
-                if creator and creator.email:
-                    recipients = [creator.email]
-                    recipient_name = creator.first_name
+            commenter_name = commenter.get_full_name() if commenter else 'Someone'
+            comment_text = kwargs.get('comment_text', '').strip()
+            comment_section = f"\nComment:\n{comment_text}\n" if comment_text else ''
+            subject = f"New Comment on Ticket #{ticket.id}"
 
-            if recipients:
-                commenter_name = commenter.get_full_name() if commenter else 'Someone'
-                subject = f"New Comment on Ticket #{ticket.id}"
-                body = (
-                    f"Hi {recipient_name},\n\n"
-                    f"{commenter_name} added a comment to your ticket.\n\n"
-                    f"Ticket: {ticket_label}\n\n"
-                    f"Please log in to view the comment and reply.\n\n"
-                    f"— AssistITK12 System"
+            # Notify both creator and assignee, but never the commenter themselves
+            notify = {}
+            if creator and creator.email and (not commenter or commenter.id != creator.id):
+                notify[creator.email] = creator.first_name
+            if assignee and assignee.email and assignee.email not in notify \
+                    and (not commenter or commenter.id != assignee.id):
+                notify[assignee.email] = assignee.first_name
+
+            for email, first_name in notify.items():
+                msg = Message(
+                    subject=subject,
+                    recipients=[email],
+                    body=(
+                        f"Hi {first_name},\n\n"
+                        f"{commenter_name} added a comment to Ticket #{ticket.id}.\n\n"
+                        f"Ticket: {ticket_label}\n"
+                        f"{comment_section}\n"
+                        f"Please log in to view and reply.\n\n"
+                        f"— AssistITK12 System"
+                    )
                 )
+                mail.send(msg)
+                current_app.logger.info(f"Comment notification sent to {email}")
+            return  # individual emails already sent above
 
         if recipients and subject and body:
             msg = Message(subject=subject, recipients=recipients, body=body)

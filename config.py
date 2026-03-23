@@ -15,6 +15,9 @@ class Config:
     # Flask-Limiter storage: set RATELIMIT_STORAGE_URI=redis://... in production
     RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
 
+    # APScheduler — disable the built-in REST API endpoint
+    SCHEDULER_API_ENABLED = False
+
     # Flask-Mail configuration
     MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
     MAIL_PORT = int(os.environ.get('MAIL_PORT', 465))

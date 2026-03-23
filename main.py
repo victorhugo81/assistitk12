@@ -7,6 +7,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_apscheduler import APScheduler
 from config import config
 
 # Initialize global extensions
@@ -15,6 +16,7 @@ login_manager = LoginManager()
 csrf = CSRFProtect()
 mail = Mail()
 limiter = Limiter(key_func=get_remote_address)
+scheduler = APScheduler()
 
 
 @login_manager.user_loader
@@ -43,6 +45,7 @@ def create_app(config_name='default'):
     csrf.init_app(app)
     mail.init_app(app)
     limiter.init_app(app)
+    scheduler.init_app(app)
     login_manager.login_view = "routes.login"
 
     migrate = Migrate(app, db)
@@ -84,7 +87,39 @@ def create_app(config_name='default'):
         except Exception:
             pass  # DB not ready on first run — env var defaults remain active
 
+    # Register FTP schedule from Organization if enabled
+    with app.app_context():
+        _register_org_ftp_schedule()
+
+    if not scheduler.running:
+        scheduler.start()
+
     return app
+
+
+def _register_org_ftp_schedule():
+    """Register (or remove) the single org-level FTP cron job based on Organization settings."""
+    try:
+        from application.models import Organization
+        from application.scheduled_jobs import run_org_ftp_schedule
+        org = Organization.query.get(1)
+        if org and org.ftp_schedule_enabled and org.ftp_schedule_hour is not None:
+            scheduler.add_job(
+                id='org_ftp_schedule',
+                func=run_org_ftp_schedule,
+                trigger='cron',
+                day_of_week=org.ftp_schedule_days or '*',
+                hour=org.ftp_schedule_hour,
+                minute=org.ftp_schedule_minute or 0,
+                replace_existing=True
+            )
+        else:
+            try:
+                scheduler.remove_job('org_ftp_schedule')
+            except Exception:
+                pass
+    except Exception:
+        pass  # DB not ready on first run
 
 if __name__ == "__main__":
     # Get environment from environment variable or use default
