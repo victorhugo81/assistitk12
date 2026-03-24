@@ -811,9 +811,14 @@ def _process_sites_rows(rows):
 @login_required
 def upload_users():
     is_admin()
-    all_logs   = BulkUploadLog.query.order_by(BulkUploadLog.uploaded_at.desc()).all()
-    user_logs  = [l for l in all_logs if not l.filename.startswith('[Sites]')]
-    site_logs  = [l for l in all_logs if l.filename.startswith('[Sites]')]
+    log_page  = request.args.get('log_page', 1, type=int)
+    per_page  = 10
+    user_logs = BulkUploadLog.query.filter(
+        ~BulkUploadLog.filename.startswith('[Sites]')
+    ).order_by(BulkUploadLog.uploaded_at.desc()).paginate(page=log_page, per_page=per_page, error_out=False)
+    site_logs = BulkUploadLog.query.filter(
+        BulkUploadLog.filename.startswith('[Sites]')
+    ).order_by(BulkUploadLog.uploaded_at.desc()).all()
     org  = Organization.query.get(1)
     ftp_host_plain     = ''
     ftp_username_plain = ''
@@ -837,100 +842,108 @@ def upload_users():
 # ****************** Import Bulk Users *******************************
 @routes_blueprint.route('/bulk-upload-users', methods=['POST'])
 @login_required
-# @csrf.exempt  # Optional: Exempt from CSRF if needed
 def bulk_upload_users():
-    is_admin()  # Ensure only admins can access this route
+    is_admin()
 
-    if 'csvFile' not in request.files:
-        flash('No file part', 'danger')
+    files = request.files.getlist('csvFile')
+    files = [f for f in files if f and f.filename]
+    if not files:
+        flash('No file selected.', 'danger')
         return redirect(url_for('routes.upload_users'))
 
-    file = request.files['csvFile']
-    if file.filename == '':
-        flash('No selected file', 'danger')
-        return redirect(url_for('routes.upload_users'))
+    for f in files:
+        if not f.filename.lower().endswith('.csv'):
+            flash(f'Invalid file: {f.filename}. Only .csv files are accepted.', 'danger')
+            return redirect(url_for('routes.upload_users'))
 
-    if not file.filename.endswith('.csv'):
-        flash('Invalid file format. Please upload a CSV file.', 'danger')
-        return redirect(url_for('routes.upload_users'))
+    # Process sites.csv before users.csv
+    files.sort(key=lambda f: (0 if f.filename.lower() == 'sites.csv' else 1))
 
-    filename = secure_filename(file.filename)
-    users_added = 0
-    users_updated = 0
-    total_records = 0
+    flash_messages = []
 
-    try:
-        # Decode the uploaded file
-        stream = file.stream.read().decode("UTF-8")
-        rows = list(csv.DictReader(stream.splitlines()))
-        total_records = len(rows)
+    for file in files:
+        filename = secure_filename(file.filename)
+        is_sites = filename.lower() == 'sites.csv'
+        added = updated = total = 0
 
-        for row in rows:
-            # Validate mandatory fields
-            if not all([row.get('first_name'), row.get('last_name'), row.get('email'), row.get('role_id'), row.get('site_name'), row.get('rm_num')]):
-                raise ValueError('Some rows in the CSV file are missing required fields.')
+        try:
+            stream = file.stream.read().decode('UTF-8')
+            rows = list(csv.DictReader(stream.splitlines()))
+            total = len(rows)
 
-            # Find the site_id from site_name
-            site = Site.query.filter_by(site_name=row['site_name']).first()
-            if not site:
-                raise ValueError(f"Site '{row['site_name']}' not found. Please verify the CSV file.")
-
-            # Check for existing user
-            existing_user = User.query.filter_by(email=row['email']).first()
-            if existing_user:
-                # Update only the allowed fields
-                existing_user.rm_num = row.get('rm_num', existing_user.rm_num)
-                existing_user.role_id = row['role_id']
-                existing_user.site_id = site.id
-                users_updated += 1
+            if is_sites:
+                added, updated = _process_sites_rows(rows)
+                db.session.commit()
+                db.session.add(BulkUploadLog(
+                    filename=f'[Sites] {filename}',
+                    uploaded_by_id=current_user.id,
+                    total_records=total,
+                    users_added=added,
+                    users_updated=updated,
+                    status='success'
+                ))
+                db.session.commit()
+                flash_messages.append(f'Sites: {added} added, {updated} updated.')
             else:
-                # Create a new user
-                new_user = User(
-                    first_name=row['first_name'],
-                    middle_name=row.get('middle_name', None),
-                    last_name=row['last_name'],
-                    email=row['email'],
-                    status=row.get('status', 'Active'),
-                    password=generate_password_hash(secrets.token_urlsafe(16)),  # Random temporary password
-                    must_change_password=True,
-                    rm_num=row.get('rm_num', None),
-                    role_id=row['role_id'],
-                    site_id=site.id
-                )
-                db.session.add(new_user)
-                users_added += 1
+                for row in rows:
+                    if not all([row.get('first_name'), row.get('last_name'), row.get('email'),
+                                row.get('role_id'), row.get('site_name'), row.get('rm_num')]):
+                        raise ValueError('Some rows in the CSV file are missing required fields.')
 
-        db.session.commit()
+                    site = Site.query.filter_by(site_name=row['site_name']).first()
+                    if not site:
+                        raise ValueError(f"Site '{row['site_name']}' not found. Please verify the CSV file.")
 
-        log = BulkUploadLog(
-            filename=filename,
-            uploaded_by_id=current_user.id,
-            total_records=total_records,
-            users_added=users_added,
-            users_updated=users_updated,
-            status='success'
-        )
-        db.session.add(log)
-        db.session.commit()
+                    existing_user = User.query.filter_by(email=row['email']).first()
+                    if existing_user:
+                        existing_user.rm_num  = row.get('rm_num', existing_user.rm_num)
+                        existing_user.role_id = row['role_id']
+                        existing_user.site_id = site.id
+                        updated += 1
+                    else:
+                        db.session.add(User(
+                            first_name=row['first_name'],
+                            middle_name=row.get('middle_name', None),
+                            last_name=row['last_name'],
+                            email=row['email'],
+                            status=row.get('status', 'Active'),
+                            password=generate_password_hash(secrets.token_urlsafe(16)),
+                            must_change_password=True,
+                            rm_num=row.get('rm_num', None),
+                            role_id=row['role_id'],
+                            site_id=site.id
+                        ))
+                        added += 1
 
-        flash(f'Successfully added {users_added} users and updated {users_updated} users.', 'success')
+                db.session.commit()
+                db.session.add(BulkUploadLog(
+                    filename=filename,
+                    uploaded_by_id=current_user.id,
+                    total_records=total,
+                    users_added=added,
+                    users_updated=updated,
+                    status='success'
+                ))
+                db.session.commit()
+                flash_messages.append(f'Users: {added} added, {updated} updated.')
 
-    except Exception as e:
-        db.session.rollback()
+        except Exception as e:
+            db.session.rollback()
+            db.session.add(BulkUploadLog(
+                filename=f'[Sites] {filename}' if is_sites else filename,
+                uploaded_by_id=current_user.id,
+                total_records=total,
+                users_added=added,
+                users_updated=updated,
+                status='error',
+                error_message=str(e)
+            ))
+            db.session.commit()
+            flash(f'Error processing {filename}: {e}', 'danger')
+            return redirect(url_for('routes.upload_users'))
 
-        log = BulkUploadLog(
-            filename=filename,
-            uploaded_by_id=current_user.id,
-            total_records=total_records,
-            users_added=users_added,
-            users_updated=users_updated,
-            status='error',
-            error_message=str(e)
-        )
-        db.session.add(log)
-        db.session.commit()
-
-        flash(f'An error occurred while processing the file: {e}', 'danger')
+    if flash_messages:
+        flash(' | '.join(flash_messages), 'success')
 
     return redirect(url_for('routes.upload_users'))
 

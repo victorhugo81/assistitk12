@@ -32,10 +32,26 @@
                 <li>Save your file as <strong>.csv</strong> (UTF-8 encoding) before uploading.</li>
             </ol>
 
-            <h5 class="mt-4 mb-3">
-                <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">table_chart</i>
-                sites.csv
-            </h5>
+
+    <div class="row">
+        <div class="col">
+                <h5 class="mt-3">
+                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">table_chart</i>
+                    sites.csv
+                </h5>
+        </div>
+        <div class="col justify-content-end d-flex">
+            <a href="{{ url_for('static', filename='download/site_bulk_template_upload.csv') }}" 
+            class="btn btn-outline-dark" download>
+                <i class="material-symbols-rounded position-relative me-1" 
+                style="font-size:1rem; vertical-align:middle;">download</i>
+                Sites Template
+            </a>
+        </div>
+    </div>
+
+
+
                     <!-- Sites CSV Columns reference -->
                     <div class="table-responsive mb-4">
                         <table class="table table-bordered table-sm text-sm align-middle mb-0">
@@ -66,10 +82,22 @@
                         </table>
                     </div>
 
-            <h5 class="mt-4 mb-3">
-                <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">table_chart</i>
-                users.csv
-            </h5>
+    <div class="row">
+        <div class="col">
+                <h5 class="mt-4 mb-3">
+                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">table_chart</i>
+                    users.csv
+                </h5>
+        </div>
+        <div class="col justify-content-end d-flex">
+            <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" 
+            class="btn btn-outline-dark mt-3" download>
+                <i class="material-symbols-rounded position-relative me-1" 
+                style="font-size:1rem; vertical-align:middle;">download</i>
+                Users Template
+            </a>
+        </div>
+    </div>
             <div class="table-responsive">
                 <table class="table table-bordered table-sm text-sm align-middle mb-0">
                     <thead class="bg-light">
@@ -135,10 +163,6 @@
         </div>
     </div>
     <hr class="mx-4">
-                                <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
-                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">download</i>
-                                Download Template
-                            </a>
     <!-- End Instructions -->
 
     <!-- Import Tabs -->
@@ -148,14 +172,7 @@
             <!-- Tab Nav -->
             <ul class="nav nav-tabs mb-4" id="importTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="sites-tab" data-bs-toggle="tab" data-bs-target="#sites-pane"
-                            type="button" role="tab" aria-controls="sites-pane" aria-selected="false">
-                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">location_city</i>
-                        Sites
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv-pane"
+                    <button class="nav-link active" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv-pane"
                             type="button" role="tab" aria-controls="csv-pane" aria-selected="true">
                         <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">upload_file</i>
                         Users
@@ -174,7 +191,7 @@
 
                 <!-- CSV Upload Tab -->
                 <div class="tab-pane fade show active" id="csv-pane" role="tabpanel" aria-labelledby="csv-tab">
-                    <p class="text-sm text-muted mb-3">Click below or drag and drop a CSV file to upload.</p>
+                    <p class="text-sm text-muted mb-3">Select or drag both <code>users.csv</code> and <code>sites.csv</code> at once, or just one of them. Sites are processed before users.</p>
 
                     <form action="{{ url_for('routes.bulk_upload_users') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -190,17 +207,13 @@
                             transition: background-color 0.2s, border-color 0.2s;
                         ">
                             <i class="material-symbols-rounded" style="font-size: 3rem; color: #344767;">upload_file</i>
-                            <p class="fw-bold mt-2 mb-1" style="font-size: 1.05rem;">Click or drag and drop your CSV file here</p>
-                            <p class="text-muted text-sm mb-0">Accepts <strong>.csv</strong> files only &mdash; maximum 10 MB</p>
-                            <input type="file" id="csvFile" name="csvFile" accept=".csv" required class="d-none">
+                            <p class="fw-bold mt-2 mb-1" style="font-size: 1.05rem;">Click or drag and drop your CSV files here</p>
+                            <p class="text-muted text-sm mb-0">Accepts <strong>users.csv</strong> and/or <strong>sites.csv</strong> &mdash; maximum 10 MB each</p>
+                            <input type="file" id="csvFile" name="csvFile" accept=".csv" multiple class="d-none">
                             <div id="fileName" class="text-sm mt-3"></div>
                         </div>
 
                         <div class="d-flex justify-content-between mt-3">
-                            <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
-                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">download</i>
-                                Download Template
-                            </a>
                             <button type="submit" class="btn bg-gradient-dark" id="uploadBtn" disabled>Upload</button>
                         </div>
                     </form>
@@ -297,12 +310,13 @@
                                 </div>
                             </div>
                             <div id="scheduleFields" {% if not (org and org.ftp_schedule_enabled) %}class="d-none"{% endif %}>
-                                <div class="row g-3">
+
                                     <div class="col-md-3">
                                         <label class="form-label text-sm font-weight-bold" for="ftp_schedule_time">Run Time</label>
                                         <input type="time" class="form-control" id="ftp_schedule_time"
                                                name="ftp_schedule_time" value="{{ ftp_schedule_time }}">
                                     </div>
+                                    <spacer class="flex-fill" style="height: 25%;"></spacer>
                                     <div class="col-md-9">
                                         <label class="form-label text-sm font-weight-bold d-block">Days of Week</label>
                                         <div class="d-flex flex-wrap gap-3 mt-1">
@@ -318,16 +332,16 @@
                                             {% endfor %}
                                         </div>
                                     </div>
-                                </div>
+
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-end gap-2 mt-3">
-                            <button type="button" class="btn btn-outline-dark" onclick="saveFtpSettings()">
-                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">save</i>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-dark p-3" onclick="saveFtpSettings()">
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; height: 25px; vertical-align:middle;">save</i>
                                 Save Settings
                             </button>
-                            <button type="submit" class="btn bg-gradient-dark">
+                            <button type="submit" class="btn bg-gradient-dark p-3">
                                 <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">cloud_download</i>
                                 Sync All Now
                             </button>
@@ -337,89 +351,6 @@
                 </div>
                 <!-- End FTP Tab -->
 
-                <!-- Sites Tab -->
-                <div class="tab-pane fade" id="sites-pane" role="tabpanel" aria-labelledby="sites-tab">
-                    <p class="text-sm text-muted mb-3">Upload a CSV file to bulk create or update sites. Existing sites are matched by <strong>site_name</strong> and updated in place.</p>
-
-
-
-                    <form action="{{ url_for('routes.bulk_upload_sites') }}" method="POST" enctype="multipart/form-data" id="sitesUploadForm">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                        <div id="sitesDropZone" style="border:2px dashed #344767;border-radius:12px;background-color:#f8f9fa;padding:48px 24px;text-align:center;cursor:pointer;transition:background-color 0.2s,border-color 0.2s;">
-                            <i class="material-symbols-rounded" style="font-size:3rem;color:#344767;">upload_file</i>
-                            <p class="fw-bold mt-2 mb-1" style="font-size:1.05rem;">Click or drag and drop your CSV file here</p>
-                            <p class="text-muted text-sm mb-0">Accepts <strong>.csv</strong> files only</p>
-                            <input type="file" id="sitesCsvFile" name="csvFile" accept=".csv" required class="d-none">
-                            <div id="sitesFileName" class="text-sm mt-3"></div>
-                        </div>
-
-                        <div class="d-flex justify-content-between mt-3">
-                            <a href="{{ url_for('static', filename='download/site_bulk_template_upload.csv') }}" class="btn btn-outline-dark mb-0" download>
-                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem;vertical-align:middle;">download</i>
-                                Download Template
-                            </a>
-                            <button type="submit" class="btn bg-gradient-dark" id="sitesUploadBtn" disabled>Upload</button>
-                        </div>
-                    </form>
-
-                    <hr class="my-4">
-
-                    <!-- Sites Upload Log -->
-                    <h6 class="font-weight-bold mb-3">
-                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem;vertical-align:middle;">history</i>
-                        Sites Upload Log
-                    </h6>
-                    <div class="table-responsive">
-                        <table class="table align-items-center mb-0 table-striped">
-                            <thead>
-                                <tr>
-                                    <th class="text-uppercase text-xxs font-weight-bolder">Date / File</th>
-                                    <th class="text-uppercase text-xxs font-weight-bolder">Uploaded By</th>
-                                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Total</th>
-                                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Added</th>
-                                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Updated</th>
-                                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% if site_logs %}
-                                    {% for log in site_logs %}
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex px-2 py-1 align-items-center">
-                                                <i class="material-symbols-rounded text-muted me-2" style="font-size:1.2rem;">description</i>
-                                                <div>
-                                                    <h6 class="mb-0 text-sm">{{ log.filename }}</h6>
-                                                    <p class="text-xs text-secondary mb-0">{{ log.uploaded_at | localtime('%m/%d/%Y %I:%M %p') }}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <p class="text-xs font-weight-bold mb-0">
-                                                {% if log.uploader %}<i class="material-symbols-rounded position-relative me-1" style="font-size:0.9rem;vertical-align:middle;">person</i>{{ log.uploader.first_name }} {{ log.uploader.last_name }}{% else %}&mdash;{% endif %}
-                                            </p>
-                                        </td>
-                                        <td class="text-center align-middle"><span class="text-xs font-weight-bold">{{ log.total_records }}</span></td>
-                                        <td class="text-center align-middle"><span class="text-success text-xs font-weight-bold">{{ log.users_added }}</span></td>
-                                        <td class="text-center align-middle"><span class="text-info text-xs font-weight-bold">{{ log.users_updated }}</span></td>
-                                        <td class="text-center align-middle">
-                                            {% if log.status == 'success' %}
-                                                <span class="badge badge-sm bg-gradient-success">Success</span>
-                                            {% else %}
-                                                <span class="badge badge-sm bg-gradient-danger" data-bs-toggle="tooltip" data-bs-placement="left" title="{{ log.error_message }}">Error</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr><td colspan="6" class="text-center text-muted py-4">No site uploads yet.</td></tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <!-- End Sites Tab -->
 
             </div>
         </div>
@@ -436,6 +367,9 @@
                     <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">history</i>
                     Review Upload Log
                 </h5>
+            </div>
+            <div class="col-auto pe-3">
+                <span class="text-xs text-muted">{{ user_logs.total }} total record{{ 's' if user_logs.total != 1 }}</span>
             </div>
         </div>
     </div>
@@ -454,8 +388,8 @@
                 </tr>
             </thead>
             <tbody>
-                {% if user_logs %}
-                    {% for log in user_logs %}
+                {% if user_logs.items %}
+                    {% for log in user_logs.items %}
                     <tr>
                         <td>
                             <div class="d-flex px-2 py-1 align-items-center">
@@ -508,6 +442,33 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination -->
+    {% if user_logs.pages > 1 %}
+    <nav class="mt-3 px-2" aria-label="Upload log pagination">
+        <ul class="pagination pagination-sm justify-content-end mb-0">
+            <li class="page-item {% if not user_logs.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="?log_page={{ user_logs.prev_num }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% for p in user_logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                    <li class="page-item {% if p == user_logs.page %}active{% endif %}">
+                        <a class="page-link" href="?log_page={{ p }}">{{ p }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not user_logs.has_next %}disabled{% endif %}">
+                <a class="page-link" href="?log_page={{ user_logs.next_num }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
     <!-- End Upload Log Table -->
 
 </div>
@@ -539,26 +500,31 @@ dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.style.backgroundColor = '#f8f9fa';
     dropZone.style.borderColor = '#344767';
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        fileInput.files = files;
-        handleFileSelect(files[0]);
+    if (e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        handleFileSelect(fileInput.files);
     }
 });
 
 fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
-        handleFileSelect(fileInput.files[0]);
+        handleFileSelect(fileInput.files);
     }
 });
 
-function handleFileSelect(file) {
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-        fileNameDisplay.innerHTML = '<span class="text-danger"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">error</i> Please select a CSV file.</span>';
+function handleFileSelect(files) {
+    const invalid = Array.from(files).filter(f => !f.name.toLowerCase().endsWith('.csv'));
+    if (invalid.length > 0) {
+        fileNameDisplay.innerHTML = '<span class="text-danger"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">error</i> All files must be .csv</span>';
         uploadBtn.disabled = true;
         return;
     }
-    fileNameDisplay.innerHTML = '<span class="text-success"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">check_circle</i> ' + file.name + '</span>';
+    const icons = { 'users.csv': 'group', 'sites.csv': 'location_city' };
+    const lines = Array.from(files).map(f => {
+        const icon = icons[f.name.toLowerCase()] || 'description';
+        return `<span class="text-success me-3"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">${icon}</i> ${f.name}</span>`;
+    });
+    fileNameDisplay.innerHTML = lines.join('');
     uploadBtn.disabled = false;
 }
 
