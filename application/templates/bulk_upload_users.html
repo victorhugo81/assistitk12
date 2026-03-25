@@ -60,25 +60,54 @@
                                     <th class="text-uppercase text-xxs font-weight-bolder ps-3">Column</th>
                                     <th class="text-uppercase text-xxs font-weight-bolder">Required</th>
                                     <th class="text-uppercase text-xxs font-weight-bolder">Description</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder">Example</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {% for col, desc in [
-                                    ('site_name',    'Unique site name'),
-                                    ('site_GU',      'Global unique identifier (UUID)'),
-                                    ('site_cds',     'CDS code'),
-                                    ('site_code',    'Short site code'),
-                                    ('site_abb',     'Site abbreviation'),
-                                    ('site_address', 'Physical address'),
-                                    ('site_type',    'e.g. Elementary, Middle, High, District Office')
-                                ] %}
-                                <tr>
-                                    <td class="ps-3 font-weight-bold">{{ col }}</td>
-                                    <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
-                                    <td class="text-muted">{{ desc }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
+                    <tbody>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_name</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Unique site name</td>
+                            <td class="text-muted">Lincoln Elementary</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_GU</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Global unique identifier (UUID)</td>
+                            <td class="text-muted">12345678-1234-1234-1234-123456789012</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_cds</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>CDS code</td>
+                            <td class="text-muted">12-73399-1232232</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_code</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Short site code</td>
+                            <td class="text-muted">LE</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_abb</td>
+                            <td><span class="badge badge-sm bg-gradient-secondary">Optional</span></td>
+                            <td>Site abbreviation</td>
+                            <td class="text-muted">Lincoln</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_address</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Physical address</td>
+                            <td class="text-muted">345 Main Street, Anytown, CA 12345</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_type</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Site Level or category</td>
+                            <td class="text-muted">Elementary, Middle, High</td>
+                        </tr>
+                        <tr></tr>
+                    </tbody>
                         </table>
                     </div>
 
@@ -157,6 +186,7 @@
                             <td>Account status — defaults to <strong>Active</strong> if omitted</td>
                             <td class="text-muted">Active</td>
                         </tr>
+                        <tr></tr>
                     </tbody>
                 </table>
             </div>
@@ -341,7 +371,7 @@
                                 <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; height: 25px; vertical-align:middle;">save</i>
                                 Save Settings
                             </button>
-                            <button type="submit" class="btn bg-gradient-dark p-3">
+                            <button type="submit" style="height:56px;"class="btn bg-gradient-dark">
                                 <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">cloud_download</i>
                                 Sync All Now
                             </button>
