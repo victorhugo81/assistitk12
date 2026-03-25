@@ -26,10 +26,9 @@
             <ol class="text-sm ps-3">
                 <li class="mb-1">Download the CSV template using the button on the upload form.</li>
                 <li class="mb-1">Fill in all required columns for each user row. Do not remove or rename column headers.</li>
-                <li class="mb-1">The <strong>site_name</strong> must exactly match an existing site name in the system.</li>
                 <li class="mb-1">If a user with the same email already exists, their record will be <strong>updated</strong> (room, role, and site). If not, a new user will be <strong>created</strong>.</li>
                 <li class="mb-1">New users are assigned a random temporary password and will be required to change it on first login.</li>
-                <li>Save your file as <strong>.csv</strong> (UTF-8 encoding) before uploading.</li>
+                <li>Save your file as <strong>sites.csv</strong> or <strong>users.json</strong> (UTF-8 encoding) before uploading.</li>
             </ol>
 
 
@@ -227,15 +226,7 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <!-- Drag and Drop Zone -->
-                        <div id="dropZone" style="
-                            border: 2px dashed #344767;
-                            border-radius: 12px;
-                            background-color: #f8f9fa;
-                            padding: 48px 24px;
-                            text-align: center;
-                            cursor: pointer;
-                            transition: background-color 0.2s, border-color 0.2s;
-                        ">
+                        <div id="dropZone" class="drop-file-upload">
                             <i class="material-symbols-rounded" style="font-size: 3rem; color: #344767;">upload_file</i>
                             <p class="fw-bold mt-2 mb-1" style="font-size: 1.05rem;">Click or drag and drop your CSV files here</p>
                             <p class="text-muted text-sm mb-0">Accepts <strong>users.csv</strong> and/or <strong>sites.csv</strong> &mdash; maximum 10 MB each</p>

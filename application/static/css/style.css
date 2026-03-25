@@ -40,6 +40,16 @@ spacer {
   display: block;
 }
 
+.drop-file-upload {
+  border: 2px dashed #344767;
+  border-radius: 12px;
+  background-color: #f8f9fa;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
 input.read-only{
   background: rgb(224, 224, 224) !important;
   color: #000000 !important;
