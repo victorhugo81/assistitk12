@@ -773,7 +773,7 @@ def delete_user(user_id):
 
 
 
-SITE_REQUIRED = ['site_name', 'site_GU', 'site_cds', 'site_code', 'site_abb', 'site_address', 'site_type']
+SITE_REQUIRED = ['site_name', 'site_GU', 'site_cds', 'site_code', 'site_address', 'site_type']
 
 def _process_sites_rows(rows):
     """Upsert sites from a list of CSV dicts. Returns (added, updated). Raises ValueError on bad data."""
@@ -788,7 +788,6 @@ def _process_sites_rows(rows):
             site.site_GU      = row['site_GU'].strip()
             site.site_cds     = row['site_cds'].strip()
             site.site_code    = row['site_code'].strip()
-            site.site_abb     = row['site_abb'].strip()
             site.site_address = row['site_address'].strip()
             site.site_type    = row['site_type'].strip()
             updated += 1
@@ -798,7 +797,6 @@ def _process_sites_rows(rows):
                 site_GU      = row['site_GU'].strip(),
                 site_cds     = row['site_cds'].strip(),
                 site_code    = row['site_code'].strip(),
-                site_abb     = row['site_abb'].strip(),
                 site_address = row['site_address'].strip(),
                 site_type    = row['site_type'].strip(),
             ))
@@ -1393,7 +1391,6 @@ def add_site():
             site_name=form.site_name.data,
             site_GU=form.site_GU.data,
             site_code=form.site_code.data,
-            site_abb=form.site_abb.data,
             site_cds=form.site_cds.data,
             site_address=form.site_address.data,
             site_type=form.site_type.data 
@@ -1427,7 +1424,6 @@ def edit_site(site_id):
             site.site_name == form.site_name.data and
             site.site_GU == form.site_GU.data and
             site.site_code == form.site_code.data and
-            site.site_abb == form.site_abb.data and
             site.site_cds == form.site_cds.data and
             site.site_address == form.site_address.data and
             site.site_type == form.site_type.data
@@ -1437,7 +1433,6 @@ def edit_site(site_id):
         site.site_name = form.site_name.data
         site.site_GU = form.site_GU.data
         site.site_code = form.site_code.data
-        site.site_abb = form.site_abb.data
         site.site_cds = form.site_cds.data
         site.site_address = form.site_address.data
         site.site_type = form.site_type.data

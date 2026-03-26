@@ -34,7 +34,6 @@ class SiteForm(FlaskForm):
     site_name = StringField('Site Name:', validators=[DataRequired()])
     site_GU = StringField('Site GUID:', validators=[DataRequired()])
     site_code = StringField('Site Code:', validators=[DataRequired()])
-    site_abb = StringField('Abbreviation:', validators=[DataRequired()])
     site_cds = StringField('CDS Code:', validators=[DataRequired()])
     site_address = StringField('Site Address:', validators=[DataRequired()])
     site_type = StringField('Site Type:', validators=[DataRequired()])

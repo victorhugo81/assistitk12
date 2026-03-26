@@ -76,7 +76,6 @@ class Site(db.Model):
     site_GU = db.Column(db.String(36), nullable=False, unique=True)
     site_cds = db.Column(db.String(100), nullable=False, unique=True)
     site_code = db.Column(db.String(100), nullable=False, unique=True)
-    site_abb = db.Column(db.String(100), nullable=False, unique=True)
     site_address = db.Column(db.String(100), nullable=False)
     site_type = db.Column(db.String(100), nullable=False)
     users = db.relationship('User', backref='site', lazy=True)
