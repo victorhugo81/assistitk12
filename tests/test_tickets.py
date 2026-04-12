@@ -115,4 +115,5 @@ class TestTicketAdmin:
 
         with app.app_context():
             from application.models import Ticket
-            assert Ticket.query.get(ticket_id) is None
+            from main import db
+            assert db.session.get(Ticket, ticket_id) is None

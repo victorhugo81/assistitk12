@@ -47,7 +47,8 @@ class TestRoles:
 
         with app.app_context():
             from application.models import Role
-            role = Role.query.get(role_id)
+            from main import db
+            role = db.session.get(Role, role_id)
             assert role.role_name == 'EditableRoleUpdated'
 
     def test_delete_role(self, app, admin_client):
@@ -65,7 +66,8 @@ class TestRoles:
 
         with app.app_context():
             from application.models import Role
-            assert Role.query.get(role_id) is None
+            from main import db
+            assert db.session.get(Role, role_id) is None
 
     def test_regular_user_cannot_add_role(self, user_client):
         r = user_client.post('/add_role', data={'role_name': 'HackerRole'})

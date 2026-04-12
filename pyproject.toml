@@ -25,3 +25,11 @@ dev = [
     "pytest>=9.0.3",
     "pytest-flask>=1.3.0",
 ]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Expected in test environment — rate limiter uses in-memory storage by design
+    "ignore:Rate limiter is using in-memory storage:RuntimeWarning",
+    # SQLAlchemy legacy Query.get() shim inside flask-sqlalchemy — not our code
+    "ignore:.*Query.get\\(\\) method is considered legacy.*:sqlalchemy.exc.LegacyAPIWarning",
+]

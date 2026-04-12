@@ -1,6 +1,11 @@
 from main import db  # Import db from main.py where it's initialized
 from flask_login import UserMixin
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _utcnow():
+    """Return current UTC time as a naive datetime (compatible with legacy DateTime columns)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Organization(db.Model):
@@ -105,8 +110,8 @@ class Ticket(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     title_id = db.Column(db.Integer, db.ForeignKey('title.id'), nullable=False)
     tck_status = db.Column(db.String(45), nullable=False, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=_utcnow, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # User who created the ticket
     site_id = db.Column(db.Integer, db.ForeignKey('site.id'), nullable=False)  # Related site
     assigned_to_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # User assigned to the ticket
@@ -138,7 +143,7 @@ class Ticket_content(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    cnt_created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    cnt_created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
     # Relationship back to the Ticket model
@@ -150,7 +155,7 @@ class Ticket_attachment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
     attach_image = db.Column(db.String(255), nullable=False)  # This column should exist
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
+    uploaded_at = db.Column(db.DateTime, default=_utcnow, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
 
@@ -158,7 +163,7 @@ class Ticket_attachment(db.Model):
 class BulkUploadLog(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     filename = db.Column(db.String(255), nullable=False)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
     uploaded_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     total_records = db.Column(db.Integer, default=0)
     users_added = db.Column(db.Integer, default=0)

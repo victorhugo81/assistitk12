@@ -23,7 +23,7 @@ def run_org_ftp_schedule():
         from application.routes import _process_sites_rows
         from werkzeug.security import generate_password_hash
 
-        org = Organization.query.get(1)
+        org = db.session.get(Organization, 1)
         if not org or not org.ftp_schedule_enabled:
             return
 

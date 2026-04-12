@@ -8,6 +8,7 @@ from flask_mail import Mail
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_apscheduler import APScheduler
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import config
 
 # Initialize global extensions
@@ -22,7 +23,7 @@ scheduler = APScheduler()
 @login_manager.user_loader
 def load_user(user_id):
     from application.models import User
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 def create_app(config_name='default'):
     app = Flask(
@@ -38,6 +39,24 @@ def create_app(config_name='default'):
 
     # Use environment-specific configuration
     app.config.from_object(config[config_name])
+
+    # Production startup guards — catch misconfiguration before the app serves traffic
+    if config_name == 'production':
+        if app.config.get('SECRET_KEY') == 'dev-secret-key':
+            raise RuntimeError(
+                "SECRET_KEY must be set to a strong random value in production. "
+                "Set the SECRET_KEY environment variable."
+            )
+        if app.config.get('RATELIMIT_STORAGE_URI', 'memory://') == 'memory://':
+            raise RuntimeError(
+                "RATELIMIT_STORAGE_URI must be set to a persistent backend "
+                "(e.g. redis://localhost:6379/0) in production. "
+                "In-memory storage resets on every restart, making rate limits ineffective."
+            )
+
+    # Trust one layer of reverse-proxy headers (Nginx/Apache sets X-Forwarded-For)
+    # so rate limiting sees the real client IP instead of the proxy's IP.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     
     # Initialize extensions
     db.init_app(app)
@@ -47,7 +66,6 @@ def create_app(config_name='default'):
     limiter.init_app(app)
     scheduler.init_app(app)
     login_manager.login_view = "routes.login"
-    login_manager.login_message = ""
 
     # Warn if rate-limit storage is in-memory (ineffective across restarts)
     if app.config.get('RATELIMIT_STORAGE_URI', 'memory://') == 'memory://':
@@ -105,7 +123,7 @@ def create_app(config_name='default'):
         try:
             from application.models import Organization
             from application.utils import decrypt_mail_password
-            org = Organization.query.get(1)
+            org = db.session.get(Organization, 1)
             if org and org.mail_server:
                 app.config['MAIL_SERVER'] = org.mail_server
                 if org.mail_port:
@@ -136,7 +154,7 @@ def _register_org_ftp_schedule():
     try:
         from application.models import Organization
         from application.scheduled_jobs import run_org_ftp_schedule
-        org = Organization.query.get(1)
+        org = db.session.get(Organization, 1)
         if org and org.ftp_schedule_enabled and org.ftp_schedule_hour is not None:
             scheduler.add_job(
                 id='org_ftp_schedule',

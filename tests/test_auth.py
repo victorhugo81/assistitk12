@@ -135,7 +135,7 @@ class TestMustChangePassword:
         with app.app_context():
             from application.models import User
             from main import db
-            u = User.query.get(user_id)
+            u = db.session.get(User, user_id)
             u.must_change_password = False
             db.session.commit()
 
@@ -160,6 +160,6 @@ class TestMustChangePassword:
         with app.app_context():
             from application.models import User
             from main import db
-            u = User.query.get(user_id)
+            u = db.session.get(User, user_id)
             u.must_change_password = False
             db.session.commit()

@@ -95,15 +95,16 @@ class TestEditUser:
         assert r.status_code == 200
 
         with app.app_context():
+            from main import db
             from application.models import User
-            u = User.query.get(uid)
+            u = db.session.get(User, uid)
             assert u.first_name == 'UpdatedAdmin'
 
         # Restore
         with app.app_context():
             from main import db
             from application.models import User
-            u = User.query.get(uid)
+            u = db.session.get(User, uid)
             u.first_name = 'Admin'
             db.session.commit()
 

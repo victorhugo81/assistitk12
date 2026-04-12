@@ -68,7 +68,7 @@ def enforce_password_change():
 @routes_blueprint.route('/set-password', methods=['GET', 'POST'])
 @login_required
 def set_password():
-    org = Organization.query.get(1)
+    org = db.session.get(Organization, 1)
     organization_name = org.organization_name if org else 'AssistITk12'
 
     if request.method == 'POST':
@@ -118,7 +118,7 @@ def load_user(user_id):
     Returns:
         User: The User object for the specified ID
     """
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # ****************** Admin *******************************
 def is_admin():
@@ -171,7 +171,7 @@ def login():
         Response: Rendered login template or redirect to index on successful login
     """
     # Fetch organization name for display on login page
-    organization = Organization.query.get(1)
+    organization = db.session.get(Organization, 1)
     organization_name = organization.organization_name if organization else "AssistITk12"
 
     _MAX_ATTEMPTS = 5
@@ -183,8 +183,8 @@ def login():
         user = User.query.filter_by(email_hash=hash_email(form.email.data, _key)).first()
 
         # Check lockout before verifying the password
-        if user and user.locked_until and user.locked_until > datetime.utcnow():
-            remaining = int((user.locked_until - datetime.utcnow()).total_seconds() // 60) + 1
+        if user and user.locked_until and user.locked_until > datetime.now(timezone.utc).replace(tzinfo=None):
+            remaining = int((user.locked_until - datetime.now(timezone.utc).replace(tzinfo=None)).total_seconds() // 60) + 1
             flash(f'Account locked. Try again in {remaining} minute(s).', 'danger')
             return render_template('login.html', form=form, organization_name=organization_name)
 
@@ -197,6 +197,7 @@ def login():
                 user.locked_until = None
                 db.session.commit()
                 session.clear()
+                session.permanent = True  # enforce PERMANENT_SESSION_LIFETIME
                 login_user(user)
                 if user.must_change_password:
                     return redirect(url_for('routes.set_password'))
@@ -206,7 +207,7 @@ def login():
             if user:
                 user.failed_login_attempts += 1
                 if user.failed_login_attempts >= _MAX_ATTEMPTS:
-                    user.locked_until = datetime.utcnow() + timedelta(minutes=_LOCKOUT_MINUTES)
+                    user.locked_until = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=_LOCKOUT_MINUTES)
                     user.failed_login_attempts = 0
                     db.session.commit()
                     flash(f'Too many failed attempts. Account locked for {_LOCKOUT_MINUTES} minutes.', 'danger')
@@ -834,7 +835,7 @@ def upload_users():
     site_logs = BulkUploadLog.query.filter(
         BulkUploadLog.filename.startswith('[Sites]')
     ).order_by(BulkUploadLog.uploaded_at.desc()).all()
-    org  = Organization.query.get(1)
+    org  = db.session.get(Organization, 1)
     ftp_host_plain     = ''
     ftp_username_plain = ''
     schedule_time = ''
@@ -1095,7 +1096,7 @@ def ftp_bulk_upload_users():
     ftp_password = request.form.get('ftp_password', '').strip()
 
     # Fall back to saved org credentials (decrypt) if form fields are blank
-    org = Organization.query.get(1)
+    org = db.session.get(Organization, 1)
     if org:
         key = current_app.config['SECRET_KEY']
         if not ftp_host and org.ftp_host_enc:
@@ -1937,7 +1938,7 @@ def delete_attachment(attachment_id):
     current_app.logger.info(f"Delete attachment request - Attachment ID: {attachment_id}, User: {current_user.id}")
     
     # Find attachment
-    attachment = Ticket_attachment.query.get(attachment_id)
+    attachment = db.session.get(Ticket_attachment, attachment_id)
     if not attachment:
         flash('Attachment not found.', 'danger')
         return redirect(url_for('routes.dashboard'))
@@ -1946,7 +1947,7 @@ def delete_attachment(attachment_id):
     ticket_id = attachment.ticket_id
     
     # Check permissions (admin, ticket owner, attachment uploader, or assigned user)
-    ticket = Ticket.query.get(ticket_id)
+    ticket = db.session.get(Ticket, ticket_id)
     if not (current_user.role_id in [1, 2, 3] or 
             current_user.id == ticket.user_id or
             current_user.id == attachment.user_id or
@@ -2106,7 +2107,7 @@ def edit_ticket(ticket_id):
                                          old_status=old_status,
                                          new_status=ticket.tck_status)
             if ticket.assigned_to_id != old_assigned_to_id:
-                new_assignee = User.query.get(ticket.assigned_to_id) if ticket.assigned_to_id else None
+                new_assignee = db.session.get(User, ticket.assigned_to_id) if ticket.assigned_to_id else None
                 send_ticket_notification('assigned', ticket, new_assignee=new_assignee)
             if bool(ticket.escalated) != old_escalated:
                 send_ticket_notification('escalated', ticket, escalated=bool(ticket.escalated))

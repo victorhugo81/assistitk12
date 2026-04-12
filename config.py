@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 
 # Load environment variables from a .env file
@@ -12,8 +13,17 @@ class Config:
     # Database connection string, with a fallback for development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///app.db')
 
+    # Recycle MySQL connections before the server-side idle timeout (~8 h)
+    SQLALCHEMY_POOL_RECYCLE = 3600
+
     # Flask-Limiter storage: set RATELIMIT_STORAGE_URI=redis://... in production
     RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
+
+    # Cap upload size at 16 MB to prevent DoS via large file uploads
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+
+    # Sessions expire after 8 hours of inactivity
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
 
     # Session cookie security
     SESSION_COOKIE_HTTPONLY = True   # Prevent JavaScript access to session cookie
@@ -42,23 +52,11 @@ class ProductionConfig(Config):
     SESSION_COOKIE_HTTPONLY = True    # Inaccessible to JavaScript
     SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF mitigation
 
-    def __init__(self):
-        if self.SECRET_KEY == 'dev-secret-key':
-            raise RuntimeError(
-                "SECRET_KEY must be set to a strong random value in production. "
-                "Set the SECRET_KEY environment variable."
-            )
-        if self.RATELIMIT_STORAGE_URI == 'memory://':
-            raise RuntimeError(
-                "RATELIMIT_STORAGE_URI must be set to a persistent backend (e.g. "
-                "redis://localhost:6379/0) in production. In-memory storage resets "
-                "on every restart, making rate limits ineffective."
-            )
-
 # Dictionary to manage different configurations for different environments
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig  # Set a default configuration
+    'default': DevelopmentConfig,
+    'testing': DevelopmentConfig,  # overridden by conftest
 }
 
