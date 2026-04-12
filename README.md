@@ -18,6 +18,11 @@ AssistITK12 is a web-based ticketing system designed to help school districts ma
 - **Reporting**: Generate reports to track trends and identify areas for improvement.
 - **Data Visualization**: Charts and graphs to visualize common technical issues and trends.
 - **Notifications**: Configurable system-wide notification messages.
+- **Bulk User Upload**: Import multiple users at once via CSV file using a provided template.
+- **FTP Integration**: Configure FTP connections and schedule automated file transfers with start/stop date support.
+- **Scheduled Jobs**: Background task scheduler for automated operations such as FTP transfers.
+- **Login Lockout**: Accounts are automatically locked after repeated failed login attempts.
+- **Encrypted User Emails**: User email addresses are stored encrypted in the database.
 
 ## Application Versions
 
@@ -175,12 +180,14 @@ uv sync
 AssistITK12 includes the following security measures:
 
 - **Login rate limiting** — brute force protection via Flask-Limiter (10 attempts/min per IP).
+- **Login lockout** — accounts are automatically locked after repeated failed login attempts.
 - **Account status enforcement** — inactive users cannot authenticate.
 - **CSRF protection** — all forms are protected using Flask-WTF.
 - **Password hashing** — passwords are hashed using werkzeug's secure default (scrypt).
 - **Password complexity** — minimum 12 characters with uppercase, lowercase, number, and special character required.
 - **Temporary password enforcement** — bulk-uploaded users receive a random temporary password and must change it before accessing the application.
 - **Encrypted SMTP credentials** — email passwords are stored encrypted using Fernet symmetric encryption.
+- **Encrypted user emails** — user email addresses are stored encrypted in the database using Fernet symmetric encryption.
 - **Role-based access control** — routes are protected based on user role (Admin, Specialist, Technician).
 
 ## Production Deployment
@@ -189,7 +196,7 @@ For production environments:
 
 1. Use a production WSGI server like Gunicorn:
    ```bash
-   pip install gunicorn
+   uv add gunicorn
    gunicorn -w 4 "main:create_app()"
    ```
 
@@ -245,8 +252,11 @@ assistitk12/
 │   ├── routes.py
 │   ├── utils.py
 │   ├── email_utils.py
+│   ├── scheduled_jobs.py
 │   ├── static/
 │   │   ├── css/
+│   │   ├── download/
+│   │   │   └── user_bulk_template_upload.csv
 │   │   ├── js/
 │   │   ├── img/
 │   │   └── uploads/
@@ -261,6 +271,8 @@ assistitk12/
 │       ├── add_title.html
 │       ├── add_user.html
 │       ├── base.html
+│       ├── bulk_upload_data.html
+│       ├── change_password.html
 │       ├── edit_notification.html
 │       ├── edit_role.html
 │       ├── edit_site.html
@@ -278,11 +290,22 @@ assistitk12/
 │       ├── tickets.html
 │       ├── titles.html
 │       └── users.html
+├── migrations/
+│   └── versions/
+├── tests/
+│   ├── conftest.py
+│   ├── test_auth.py
+│   ├── test_crud.py
+│   ├── test_security.py
+│   ├── test_tickets.py
+│   └── test_users.py
+├── installation/
+│   ├── create_env.py
+│   └── seed_data.py
 ├── main.py
 ├── config.py
 ├── pyproject.toml
-├── uv.lock
-└── installation/
-    ├── create_env.py
-    └── seed_data.py
+├── CHANGELOG.md
+├── CODE_OF_CONDUCT.md
+└── uv.lock
 ```
