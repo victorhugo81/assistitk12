@@ -1,0 +1,175 @@
+
+<!-- footer -->
+<footer class="footer py-4">
+  <div class="container-fluid">
+    <div class="row justify-content-end">
+      <div class="col-12 text-end">
+        <div class="copyright text-sm text-muted">
+          <a href="" class="font-weight-bold" target="_blank">AssistITk12</a>
+          © <script>
+            document.write(new Date().getFullYear());
+          </script>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<!-- End footer -->
+</div>
+</main>
+
+
+
+<!--   close warning messages  -->
+<script>
+  setTimeout(() => {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => alert.classList.remove('show'));
+  }, 5000); // Dismiss after 5 seconds
+</script>
+
+
+
+<!-- Mobile menu toggle -->
+<script>
+(function () {
+  const toggle = document.querySelector('.mobile-menu-toggle');
+  const wrapper = document.getElementById('menuToggle');
+  if (!toggle || !wrapper) return;
+
+  function openMenu() {
+    wrapper.classList.add('is-open');
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.setAttribute('aria-label', 'Close navigation menu');
+  }
+
+  function closeMenu() {
+    wrapper.classList.remove('is-open');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Open navigation menu');
+  }
+
+  toggle.addEventListener('click', function () {
+    wrapper.classList.contains('is-open') ? closeMenu() : openMenu();
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && wrapper.classList.contains('is-open')) {
+      closeMenu();
+      toggle.focus();
+    }
+  });
+
+  // Close when a nav link is clicked
+  document.querySelectorAll('#menu a').forEach(function (link) {
+    link.addEventListener('click', closeMenu);
+  });
+})();
+</script>
+
+
+<!--   Core JS Files   -->
+<script src="{{ url_for('static', filename='js/core/popper.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/bootstrap.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/plugins/perfect-scrollbar.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/plugins/smooth-scrollbar.min.js') }}"></script>
+
+<script>
+var win = navigator.platform.indexOf('Win') > -1;
+if (win && document.querySelector('#sidenav-scrollbar')) {
+var options = {
+  damping: '0.5'
+}
+Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
+}
+</script>
+<!-- Delete confirmation modal controller -->
+<script>
+(function () {
+  var modalEl    = document.getElementById('deleteConfirmModal');
+  if (!modalEl) return;
+  var msgEl      = document.getElementById('deleteModalMessage');
+  var titleEl    = document.getElementById('deleteModalTitleText');
+  var confirmBtn = document.getElementById('deleteModalConfirmBtn');
+  var _cb        = null;
+
+  // Data-attribute–driven triggers (form delete buttons in tables)
+  modalEl.addEventListener('show.bs.modal', function (event) {
+    var trigger = event.relatedTarget;
+    if (!trigger) return;
+    var message = trigger.getAttribute('data-confirm-message');
+    var formId  = trigger.getAttribute('data-form-id');
+    titleEl.textContent    = 'Confirm Delete';
+    confirmBtn.textContent = 'Delete';
+    confirmBtn.className   = 'btn btn-danger btn-sm';
+    if (message) msgEl.textContent = message;
+    if (formId)  _cb = function () { document.getElementById(formId).submit(); };
+  });
+
+  confirmBtn.addEventListener('click', function () {
+    if (typeof _cb === 'function') _cb();
+    _cb = null;
+    bootstrap.Modal.getInstance(modalEl).hide();
+  });
+
+  modalEl.addEventListener('hidden.bs.modal', function () { _cb = null; });
+
+  // Programmatic API for JS-driven confirmations (edit_user, edit_ticket)
+  window.showDeleteConfirm = function (message, callback, opts) {
+    opts = opts || {};
+    msgEl.textContent      = message;
+    titleEl.textContent    = opts.title        || 'Confirm Delete';
+    confirmBtn.textContent = opts.confirmLabel || 'Delete';
+    confirmBtn.className   = 'btn btn-sm ' + (opts.confirmClass || 'btn-danger');
+    _cb = callback;
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  };
+}());
+</script>
+
+<!-- Unsaved changes warning -->
+<script>
+(function () {
+  var _dirty = false;
+
+  // A form is trackable if it has at least one visible field AND no
+  // auto-submitting onchange fields (filter dropdowns, per-page selects).
+  function isTrackable(form) {
+    if (form.querySelector('[onchange]')) return false;
+    return form.querySelector('input:not([type="hidden"]), textarea, select') !== null;
+  }
+
+  document.querySelectorAll('form').forEach(function (form) {
+    if (!isTrackable(form)) return;
+    form.addEventListener('input',  function () { _dirty = true; });
+    form.addEventListener('change', function () { _dirty = true; });
+    // Clear on intentional submit so the warning doesn't fire on save
+    form.addEventListener('submit', function () { _dirty = false; });
+  });
+
+  // Clear when the delete modal confirm fires (navigates away intentionally)
+  var confirmBtn = document.getElementById('deleteModalConfirmBtn');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function () { _dirty = false; });
+  }
+
+  window.addEventListener('beforeunload', function (e) {
+    if (_dirty) {
+      e.preventDefault();
+      e.returnValue = ''; // Required for Chrome/Edge to show the dialog
+    }
+  });
+}());
+</script>
+
+<!-- Github buttons -->
+<script async defer src="https://buttons.github.io/buttons.js"></script>
+<!-- Control Center for Material Dashboard: parallax effects, scripts for the example pages etc -->
+<script src="{{ url_for('static', filename='js/material-dashboard.js') }}"></script>
+</body>
+
+</html>
+

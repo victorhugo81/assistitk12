@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="main-card-box card my-4">
+            <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+                <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3">
+                    <h2 class="text-white text-capitalize ps-3">Add New User</h2>
+                </div>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    <div class="col-12 d-flex justify-content-end align-items-center sticky-top bg-white py-2 mb-4 border-bottom">
+                        <div class="d-flex justify-content-end gap-2 mt-3">
+                            {{ form.submit(class="btn bg-gradient-main") }}
+                            <a type="button" class="btn reset-button-box shadow-dark" href="/users">Back</a>
+                        </div>
+                    </div>
+
+                    <!-- Section: Personal Info -->
+                    <p class="text-uppercase text-sm text-muted fw-bold mb-2 mt-3">Personal Information</p>
+                    <hr class="mt-0 mb-3">
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <span aria-hidden="true" class="text-danger ms-1">*</span>
+                            {{ form.first_name.label(class="form-label") }}
+                            {{ form.first_name(class="form-control text-capitalize") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            {{ form.middle_name.label(class="form-label") }}
+                            {{ form.middle_name(class="form-control text-capitalize") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <span aria-hidden="true" class="text-danger ms-1">*</span>      
+                            {{ form.last_name.label(class="form-label") }}
+                            {{ form.last_name(class="form-control text-capitalize") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <span aria-hidden="true" class="text-danger ms-1">*</span>      
+                            {{ form.email.label(class="form-label") }}
+                            {{ form.email(class="form-control", type="email") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            {{ form.rm_num.label(class="form-label") }}
+                            {{ form.rm_num(class="form-control") }}
+                        </div>
+                    </div>
+
+                    <!-- Section: Account & Placement -->
+                    <p class="text-uppercase text-sm text-muted fw-bold mb-2 mt-5">Account & Placement</p>
+                    <hr class="mt-0 mb-3">
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <span aria-hidden="true" class="text-danger ms-1">*</span>      
+                            {{ form.role_id.label(class="form-label") }}
+                            {{ form.role_id(class="form-select-box form-select") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <span aria-hidden="true" class="text-danger ms-1">*</span>      
+                            {{ form.status.label(class="form-label") }}
+                            {{ form.status(class="form-select-box form-select") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <span aria-hidden="true" class="text-danger ms-1">*</span>      
+                            {{ form.site_id.label(class="form-label") }}
+                            {{ form.site_id(class="form-select-box form-select") }}
+                        </div>
+                    </div>
+
+                    <!-- Section: Password -->
+                    <p class="text-uppercase text-sm text-muted fw-bold mb-2 mt-5">Security</p>
+                    <hr class="mt-0 mb-3">
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <span aria-hidden="true" class="text-danger ms-1">*</span>      
+                            {{ form.password.label(class="form-label") }}
+                            {{ form.password(class="form-control", type="password", required=True) }}
+                            <p class="form-text text-muted mt-1">Min 8 characters with uppercase, lowercase, and a number.</p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

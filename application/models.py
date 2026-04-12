@@ -1,0 +1,169 @@
+from main import db  # Import db from main.py where it's initialized
+from flask_login import UserMixin
+from datetime import datetime
+
+
+class Organization(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    organization_name = db.Column(db.String(100), nullable=False)
+    site_version = db.Column(db.String(100), nullable=False)
+    organization_logo = db.Column(db.String(100), nullable=True)
+    # Flask-Mail configuration
+    mail_server = db.Column(db.String(255), nullable=True)
+    mail_port = db.Column(db.Integer, nullable=True)
+    mail_use_tls = db.Column(db.Boolean, default=False, nullable=True)
+    mail_use_ssl = db.Column(db.Boolean, default=False, nullable=True)
+    mail_username = db.Column(db.String(255), nullable=True)
+    mail_password = db.Column(db.String(255), nullable=True)
+    mail_default_sender = db.Column(db.String(255), nullable=True)
+    # FTP configuration (host, username, password stored encrypted)
+    ftp_host_enc = db.Column(db.String(512), nullable=True)
+    ftp_port = db.Column(db.Integer, default=21, nullable=True)
+    ftp_username_enc = db.Column(db.String(512), nullable=True)
+    ftp_password_enc = db.Column(db.String(512), nullable=True)
+    ftp_path = db.Column(db.String(512), nullable=True)
+    ftp_use_tls = db.Column(db.Boolean, default=False, nullable=True)
+    # FTP schedule
+    ftp_schedule_enabled = db.Column(db.Boolean, default=False, nullable=True)
+    ftp_schedule_hour    = db.Column(db.Integer, nullable=True)
+    ftp_schedule_minute  = db.Column(db.Integer, default=0, nullable=True)
+    ftp_schedule_days    = db.Column(db.String(50), default='*', nullable=True)  # '*' or 'mon,tue,...'
+    ftp_last_run_at      = db.Column(db.DateTime, nullable=True)
+    ftp_last_run_status  = db.Column(db.String(20), nullable=True)
+    ftp_schedule_start_date = db.Column(db.Date, nullable=True)
+    ftp_schedule_stop_date  = db.Column(db.Date, nullable=True)
+
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    msg_name = db.Column(db.String(100), unique=True, nullable=False)
+    msg_content = db.Column(db.String(255), nullable=False)
+    msg_status = db.Column(db.String(10), nullable=False)
+
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    first_name = db.Column(db.String(50), nullable=False)
+    middle_name = db.Column(db.String(50), nullable=True)
+    last_name = db.Column(db.String(50), nullable=False)
+    email_enc  = db.Column(db.Text, nullable=False)
+    email_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    status = db.Column(db.String(120), nullable=False)
+
+    @property
+    def email(self):
+        from flask import current_app
+        from application.utils import decrypt_mail_password
+        return decrypt_mail_password(self.email_enc or '', current_app.config['SECRET_KEY'])
+
+    @email.setter
+    def email(self, value):
+        from flask import current_app
+        from application.utils import encrypt_mail_password, hash_email
+        key = current_app.config['SECRET_KEY']
+        self.email_enc = encrypt_mail_password(value or '', key)
+        self.email_hash = hash_email(value or '', key)
+    password = db.Column(db.String(255), nullable=False)
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False)
+    failed_login_attempts = db.Column(db.Integer, default=0, nullable=False)
+    locked_until = db.Column(db.DateTime, nullable=True)
+    rm_num = db.Column(db.String(45), nullable=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id', ondelete='CASCADE'), nullable=False)
+    site_id = db.Column(db.Integer, db.ForeignKey('site.id', ondelete='CASCADE'), nullable=False)
+
+    def get_full_name(self):
+        return f"{self.first_name} {self.middle_name or ''} {self.last_name}".strip()
+    
+    @property
+    def is_admin(self):
+        return self.role and self.role.role_name.lower() == "admin"
+
+    @property
+    def is_tech_role(self):
+        return self.role and self.role.role_name.lower() in ["specialist", "technician"]
+
+
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    role_name = db.Column(db.String(50), unique=True, nullable=False)
+    users = db.relationship('User', backref='role', lazy=True)
+
+
+class Site(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    site_name = db.Column(db.String(100), nullable=False, unique=True)
+    site_acronyms = db.Column(db.String(36), nullable=False)
+    site_cds = db.Column(db.String(100), nullable=False)
+    site_code = db.Column(db.String(100), nullable=False)
+    site_address = db.Column(db.String(100), nullable=False)
+    site_type = db.Column(db.String(100), nullable=False)
+    users = db.relationship('User', backref='site', lazy=True)
+    tickets = db.relationship('Ticket', back_populates='site')  # Matches the relationship in Ticket
+
+
+class Ticket(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title_id = db.Column(db.Integer, db.ForeignKey('title.id'), nullable=False)
+    tck_status = db.Column(db.String(45), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # User who created the ticket
+    site_id = db.Column(db.Integer, db.ForeignKey('site.id'), nullable=False)  # Related site
+    assigned_to_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # User assigned to the ticket
+    escalated = db.Column(db.Integer, nullable=True, default=0) 
+
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='created_tickets')
+    assigned_to = db.relationship('User', foreign_keys=[assigned_to_id], backref='assigned_tickets')
+    title = db.relationship('Title', backref='tickets')
+    contents = db.relationship('Ticket_content', back_populates='ticket', cascade='all, delete-orphan')
+    site = db.relationship('Site', back_populates='tickets')
+    attachments = db.relationship('Ticket_attachment', backref='ticket', lazy=True, cascade='all, delete-orphan')
+    
+    @classmethod
+    def get_tickets_by_status(cls, status):
+        return cls.query.filter_by(tck_status=status).all()
+
+    @classmethod
+    def get_tickets_assigned_to_user(cls, user_id):
+        return cls.query.filter_by(assigned_to_id=user_id).all()
+
+
+class Title(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title_name = db.Column(db.String(100), unique=True, nullable=False)
+
+
+class Ticket_content(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    cnt_created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+    # Relationship back to the Ticket model
+    ticket = db.relationship('Ticket', back_populates='contents')
+    user = db.relationship('User', backref='comments')
+
+
+class Ticket_attachment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    attach_image = db.Column(db.String(255), nullable=False)  # This column should exist
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+
+
+class BulkUploadLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    filename = db.Column(db.String(255), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    total_records = db.Column(db.Integer, default=0)
+    users_added = db.Column(db.Integer, default=0)
+    users_updated = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='success')
+    error_message = db.Column(db.Text, nullable=True)
+
+    uploader = db.relationship('User', foreign_keys=[uploaded_by_id])

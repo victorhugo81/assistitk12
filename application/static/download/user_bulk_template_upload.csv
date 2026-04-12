@@ -1,0 +1,11 @@
+first_name,middle_name,last_name,email,role_id,site_name,rm_num,status
+Maria,Elena,Garcia,m.garcia@school.edu,4,Lincoln Elementary,101,Active
+James,,Johnson,j.johnson@school.edu,4,Lincoln Elementary,102,Active
+Priya,Ann,Patel,p.patel@school.edu,4,Washington Middle School,205,Active
+Carlos,Luis,Rivera,c.rivera@school.edu,3,Washington Middle School,B12,Active
+Sandra,,Kim,s.kim@school.edu,4,Roosevelt High School,301,Active
+David,James,Nguyen,d.nguyen@school.edu,4,Roosevelt High School,302,Active
+Emily,,Thompson,e.thompson@school.edu,2,Lincoln Elementary,Office,Active
+Robert,Alan,Martinez,r.martinez@school.edu,4,Washington Middle School,210,Inactive
+Jessica,,Lee,j.lee@school.edu,4,Roosevelt High School,115,Active
+Michael,John,Brown,m.brown@school.edu,3,Lincoln Elementary,Lib,Active

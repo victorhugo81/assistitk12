@@ -1,0 +1,596 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <!-- main content card -->
+<div class="row">
+    <div class="col-12">
+        <div class="main-card-box card my-4">
+        <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+          <div class="bg-gradient-main shadow-dark border-radius-lg pt-4 pb-3 d-flex align-items-center justify-content-between px-3">
+            <h2 class="text-white text-capitalize mb-0">Bulk Upload</h2>
+            <a href="{{ url_for('routes.organization') }}" class="btn btn-sm btn-outline-light mb-0">
+                <i class="material-symbols-rounded position-relative" style="font-size:1rem; vertical-align:middle;">arrow_back</i> Back
+            </a>
+          </div>
+        </div>
+        <div class="card-body px-0 pb-2">
+            <br>
+
+    <!-- Instructions -->
+    <div class="card-body align-items-center">
+        <div class="container-md">
+            <h3 class="mb-3">
+                <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">info</i>
+                Instructions
+            </h5>
+            <ol class="text-sm ps-3">
+                <li class="mb-1">Download the CSV template using the button on the upload form.</li>
+                <li class="mb-1">Fill in all required columns for each user row. Do not remove or rename column headers.</li>
+                <li class="mb-1">If a user with the same email already exists, their record will be <strong>updated</strong> (room, role, and site). If not, a new user will be <strong>created</strong>.</li>
+                <li class="mb-1">Any active user <strong>not found</strong> in the uploaded file will be automatically marked <strong>Inactive</strong>.</li>
+                <li class="mb-1">New users are assigned a random temporary password and will be required to change it on first login.</li>
+                <li>Save your file as <strong>filename.csv</strong> (UTF-8 encoding) before uploading.</li>
+            </ol>
+
+
+    <div class="row">
+        <div class="col">
+                <h3 class="mt-3">
+                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">table_chart</i>
+                    sites.csv
+                </h5>
+        </div>
+        <div class="col justify-content-end d-flex">
+            <a href="{{ url_for('static', filename='download/site_bulk_template_upload.csv') }}" 
+            class="btn btn-outline-dark" download>
+                <i class="material-symbols-rounded position-relative me-1" 
+                style="font-size:1rem; vertical-align:middle;">download</i>
+                Sites Template
+            </a>
+        </div>
+    </div>
+
+
+
+                    <!-- Sites CSV Columns reference -->
+                    <div class="table-responsive mb-4">
+                        <table class="table table-bordered table-sm text-sm align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="text-uppercase text-xxs font-weight-bolder ps-3">Column</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder">Required</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder">Description</th>
+                                    <th class="text-uppercase text-xxs font-weight-bolder">Example</th>
+                                </tr>
+                            </thead>
+                    <tbody>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_name</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Unique site name</td>
+                            <td class="text-muted">Gotham High School</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_acronyms</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>School Acronyms</td>
+                            <td class="text-muted">GHS</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_cds</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>CDS code</td>
+                            <td class="text-muted">12-73399-1232232</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_code</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Short site code</td>
+                            <td class="text-muted">897908</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_address</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Physical address</td>
+                            <td class="text-muted">345 Main Street, Anytown, CA 12345</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_type</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Site Level or category</td>
+                            <td class="text-muted">Elementary, Middle, High</td>
+                        </tr>
+                        <tr></tr>
+                    </tbody>
+                        </table>
+                    </div>
+
+    <div class="row">
+        <div class="col">
+                <h3 class="mt-4 mb-3">
+                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">table_chart</i>
+                    users.csv
+                </h5>
+        </div>
+        <div class="col justify-content-end d-flex">
+            <a href="{{ url_for('static', filename='download/user_bulk_template_upload.csv') }}" 
+            class="btn btn-outline-dark mt-3" download>
+                <i class="material-symbols-rounded position-relative me-1" 
+                style="font-size:1rem; vertical-align:middle;">download</i>
+                Users Template
+            </a>
+        </div>
+    </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm text-sm align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-uppercase text-xxs font-weight-bolder ps-3">Column</th>
+                            <th class="text-uppercase text-xxs font-weight-bolder">Required</th>
+                            <th class="text-uppercase text-xxs font-weight-bolder">Description</th>
+                            <th class="text-uppercase text-xxs font-weight-bolder">Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">first_name</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>User's first name</td>
+                            <td class="text-muted">Maria</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">middle_name</td>
+                            <td><span class="badge badge-sm bg-gradient-secondary">Optional</span></td>
+                            <td>User's middle name</td>
+                            <td class="text-muted">Elena</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">last_name</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>User's last name</td>
+                            <td class="text-muted">Garcia</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">email</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Unique email address — used to match existing users</td>
+                            <td class="text-muted">m.garcia@school.edu</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">role_id</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Numeric role ID (1 = Admin, 2 = Specialist, 3 = Technician, 4 = User)</td>
+                            <td class="text-muted">4</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">site_name</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Exact site name as it appears in the system</td>
+                            <td class="text-muted">Lincoln Elementary</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">rm_num</td>
+                            <td><span class="badge badge-sm bg-gradient-danger">Required</span></td>
+                            <td>Room number or location</td>
+                            <td class="text-muted">101</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 font-weight-bold">status</td>
+                            <td><span class="badge badge-sm bg-gradient-secondary">Optional</span></td>
+                            <td>Account status — defaults to <strong>Active</strong> if omitted</td>
+                            <td class="text-muted">Active</td>
+                        </tr>
+                        <tr></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <hr class="mx-4">
+    <!-- End Instructions -->
+
+    <!-- Import Tabs -->
+    <div class="card-body">
+        <div class="container-md">
+
+            <!-- Tab Nav -->
+            <ul class="nav nav-tabs mb-4" id="importTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="csv-tab" data-bs-toggle="tab" data-bs-target="#csv-pane"
+                            type="button" role="tab" aria-controls="csv-pane" aria-selected="true">
+                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">upload_file</i>
+                        Manual File Upload
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ftp-tab" data-bs-toggle="tab" data-bs-target="#ftp-pane"
+                            type="button" role="tab" aria-controls="ftp-pane" aria-selected="false">
+                        <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">dns</i>
+                        FTP
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="importTabContent">
+
+                <!-- CSV Upload Tab -->
+                <div class="tab-pane fade show active" id="csv-pane" role="tabpanel" aria-labelledby="csv-tab">
+                    <p class="text-sm text-muted mb-3">Select or drag both <code>users.csv</code> and <code>sites.csv</code> at once, or just one of them. Sites are processed before users.</p>
+
+                    <form action="{{ url_for('routes.bulk_upload_users') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <!-- Drag and Drop Zone -->
+                        <div id="dropZone" class="drop-file-upload">
+                            <i class="material-symbols-rounded" style="font-size: 3rem; color: #344767;">upload_file</i>
+                            <p class="fw-bold mt-2 mb-1" style="font-size: 1.05rem;">Click or drag and drop your CSV files here</p>
+                            <p class="text-muted text-sm mb-0">Accepts <strong>users.csv</strong> and/or <strong>sites.csv</strong> &mdash; maximum 10 MB each</p>
+                            <input type="file" id="csvFile" name="csvFile" accept=".csv" multiple class="d-none">
+                            <div id="fileName" class="text-sm mt-3"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-3">
+                            <button type="submit" class="btn bg-gradient-dark" id="uploadBtn" disabled>Upload</button>
+                        </div>
+                    </form>
+                </div>
+                <!-- End CSV Upload Tab -->
+
+                <!-- FTP Tab -->
+                <div class="tab-pane fade" id="ftp-pane" role="tabpanel" aria-labelledby="ftp-tab">
+                    <p class="text-sm text-muted mb-3">
+                        Enter your FTP server details below. Click <strong>Save Settings</strong> to store them for future use, or <strong>Import Now</strong> to run an import immediately.
+                        {% if org and org.ftp_host_enc %}<span class="badge bg-gradient-success ms-1">Credentials saved</span>{% endif %}
+                    </p>
+
+                    <form id="ftpForm" method="POST" action="{{ url_for('routes.ftp_bulk_upload_users') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_host">FTP Host</label>
+                                <input type="text" class="form-control" id="ftp_host" name="ftp_host"
+                                       value="{{ ftp_host_plain }}"
+                                       placeholder="ftp.example.com" autocomplete="off">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_port">Port</label>
+                                <input type="number" class="form-control" id="ftp_port" name="ftp_port"
+                                       value="{{ org.ftp_port or 21 if org else 21 }}" min="1" max="65535">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_username">Username</label>
+                                <input type="text" class="form-control" id="ftp_username" name="ftp_username"
+                                       value="{{ ftp_username_plain }}"
+                                       placeholder="ftpuser" autocomplete="off">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_password">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="ftp_password" name="ftp_password"
+                                           placeholder="{{ '••••••• (saved)' if org and org.ftp_password_enc else '••••••••' }}"
+                                           autocomplete="new-password">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleFtpPwd"
+                                            tabindex="-1" aria-label="Toggle password visibility">
+                                        <i class="material-symbols-rounded" style="font-size:1rem; vertical-align:middle;" id="ftpPwdIcon">visibility</i>
+                                    </button>
+                                </div>
+                                {% if org and org.ftp_password_enc %}
+                                <div class="form-text text-xs text-muted">Leave blank to keep the saved password.</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label text-sm font-weight-bold" for="ftp_path">Remote Directory</label>
+                                <input type="text" class="form-control" id="ftp_path" name="ftp_path"
+                                       value="{{ org.ftp_path or '' if org else '' }}"
+                                       placeholder="/uploads/" autocomplete="off">
+                                <div class="form-text text-xs text-muted">Directory on the FTP server containing <code>users.csv</code> and <code>sites.csv</code>, e.g. <code>/data/</code></div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="ftp_use_tls" name="ftp_use_tls"
+                                           {{ 'checked' if org and org.ftp_use_tls else '' }}>
+                                    <label class="form-check-label text-sm" for="ftp_use_tls">Use FTPS (FTP over TLS/SSL)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule section -->
+                        <hr class="my-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="font-weight-bold mb-0">
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">schedule</i>
+                                Automatic Schedule
+                            </h6>
+                            {% if org and org.ftp_schedule_enabled and org.ftp_last_run_at %}
+                            <small class="text-muted">
+                                Last run: {{ org.ftp_last_run_at | localtime('%m/%d/%Y %I:%M %p') }}
+                                {% if org.ftp_last_run_status == 'success' %}
+                                    <span class="badge badge-sm bg-gradient-success ms-1">Success</span>
+                                {% else %}
+                                    <span class="badge badge-sm bg-gradient-danger ms-1">Error</span>
+                                {% endif %}
+                            </small>
+                            {% endif %}
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="ftp_schedule_enabled"
+                                           name="ftp_schedule_enabled"
+                                           {{ 'checked' if org and org.ftp_schedule_enabled else '' }}
+                                           onchange="document.getElementById('scheduleFields').classList.toggle('d-none', !this.checked)">
+                                    <label class="form-check-label text-sm font-weight-bold" for="ftp_schedule_enabled">
+                                        Enable automatic import
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="scheduleFields" {% if not (org and org.ftp_schedule_enabled) %}class="d-none"{% endif %}>
+
+
+                                    <div class="col-md-3">
+                                        <label class="form-label text-sm font-weight-bold" for="ftp_schedule_start_date">Start Date</label>
+                                        <input type="date" class="form-control" id="ftp_schedule_start_date"
+                                               name="ftp_schedule_start_date"
+                                               value="{{ org.ftp_schedule_start_date.isoformat() if org and org.ftp_schedule_start_date else '' }}">
+                                        <div class="form-text text-xs text-muted">First day the schedule runs.</div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label text-sm font-weight-bold" for="ftp_schedule_stop_date">Stop Date</label>
+                                        <input type="date" class="form-control" id="ftp_schedule_stop_date"
+                                               name="ftp_schedule_stop_date"
+                                               value="{{ org.ftp_schedule_stop_date.isoformat() if org and org.ftp_schedule_stop_date else '' }}">
+                                        <div class="form-text text-xs text-muted">Leave blank to run indefinitely.</div>
+                                    </div>
+                                    <spacer class="flex-fill" style="height: 5%;"></spacer>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label text-sm font-weight-bold" for="ftp_schedule_time">Run Time <span aria-hidden="true" class="text-danger ms-1">*</span></label>
+                                        <input type="time" class="form-control" id="ftp_schedule_time"
+                                               name="ftp_schedule_time" value="{{ ftp_schedule_time }}">
+                                    </div>
+
+                                    <spacer class="flex-fill" style="height: 5%;"></spacer>
+
+                                    <div class="col-md-9">
+                                        <label class="form-label text-sm font-weight-bold d-block">Days of Week</label>
+                                        <div class="d-flex flex-wrap gap-3 mt-1">
+                                            {% set active_days = (org.ftp_schedule_days or '*').split(',') if org else ['*'] %}
+                                            {% for day_val, day_label in [('mon','Mon'),('tue','Tue'),('wed','Wed'),('thu','Thu'),('fri','Fri'),('sat','Sat'),('sun','Sun')] %}
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="ftp_schedule_days" value="{{ day_val }}"
+                                                       id="sched_{{ day_val }}"
+                                                       {{ 'checked' if active_days == ['*'] or day_val in active_days else '' }}>
+                                                <label class="form-check-label text-sm" for="sched_{{ day_val }}">{{ day_label }}</label>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-dark p-3" onclick="saveFtpSettings()">
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; height: 25px; vertical-align:middle;">save</i>
+                                Save Settings
+                            </button>
+                            <button type="submit" style="height:56px;"class="btn bg-gradient-dark">
+                                <i class="material-symbols-rounded position-relative me-1" style="font-size:1rem; vertical-align:middle;">cloud_download</i>
+                                Sync All Now
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+                <!-- End FTP Tab -->
+
+
+            </div>
+        </div>
+    </div>
+    <!-- End Import Tabs -->
+
+    <hr class="mx-4">
+
+    <!-- Upload Log Section -->
+    <div class="table-per-page-section mt-2">
+        <div class="row justify-content-between align-items-center">
+            <div class="col">
+                <h3 class="mb-0 ps-2">
+                    <i class="material-symbols-rounded position-relative me-1" style="font-size:1.2rem; vertical-align:middle;">history</i>
+                    Review Upload Log
+                </h5>
+            </div>
+            <div class="col-auto pe-3">
+                <span class="text-xs text-muted">{{ user_logs.total }} total record{{ 's' if user_logs.total != 1 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Log Table -->
+    <div class="table-responsive mt-3">
+        <table class="table align-items-center mb-0 table-striped">
+            <thead>
+                <tr>
+                    <th class="text-uppercase text-xxs font-weight-bolder">Date / File</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder">Uploaded By</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Total Records</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Added</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Updated</th>
+                    <th class="text-uppercase text-xxs font-weight-bolder text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if user_logs.items %}
+                    {% for log in user_logs.items %}
+                    <tr>
+                        <td>
+                            <div class="d-flex px-2 py-1 align-items-center">
+                                <i class="material-symbols-rounded text-muted me-2" style="font-size:1.2rem;">description</i>
+                                <div>
+                                    <h6 class="mb-0 text-sm">{{ log.filename }}</h6>
+                                    <p class="text-xs text-secondary mb-0">{{ log.uploaded_at | localtime('%m/%d/%Y %I:%M %p') }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <p class="text-xs font-weight-bold mb-0">
+                                {% if log.uploader %}
+                                    <i class="material-symbols-rounded position-relative me-1" style="font-size:0.9rem; vertical-align:middle;">person</i>
+                                    {{ log.uploader.first_name }} {{ log.uploader.last_name }}
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </p>
+                        </td>
+                        <td class="text-center align-middle">
+                            <span class="text-xs font-weight-bold">{{ log.total_records }}</span>
+                            <p class="text-xs text-muted mb-0">Total Records</p>
+                        </td>
+                        <td class="text-center align-middle">
+                            <span class="text-success text-xs font-weight-bold">{{ log.users_added }}</span>
+                            <p class="text-xs text-muted mb-0">Added</p>
+                        </td>
+                        <td class="text-center align-middle">
+                            <span class="text-info text-xs font-weight-bold">{{ log.users_updated }}</span>
+                            <p class="text-xs text-muted mb-0">Updated</p>
+                        </td>
+                        <td class="text-center align-middle">
+                            {% if log.status == 'success' %}
+                                <span class="badge badge-sm bg-gradient-success">Success</span>
+                            {% else %}
+                                <span class="badge badge-sm bg-gradient-danger"
+                                      data-bs-toggle="tooltip"
+                                      data-bs-placement="left"
+                                      title="{{ log.error_message }}">Error</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No uploads yet.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if user_logs.pages > 1 %}
+    <nav class="mt-3 px-2" aria-label="Upload log pagination">
+        <ul class="pagination pagination-sm justify-content-end mb-0">
+            <li class="page-item {% if not user_logs.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="?log_page={{ user_logs.prev_num }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% for p in user_logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                    <li class="page-item {% if p == user_logs.page %}active{% endif %}">
+                        <a class="page-link" href="?log_page={{ p }}">{{ p }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not user_logs.has_next %}disabled{% endif %}">
+                <a class="page-link" href="?log_page={{ user_logs.next_num }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+    <!-- End Upload Log Table -->
+
+</div>
+</div>
+</div>
+</div>
+<!-- End main content card -->
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('csvFile');
+const fileNameDisplay = document.getElementById('fileName');
+const uploadBtn = document.getElementById('uploadBtn');
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.backgroundColor = '#e9ecef';
+    dropZone.style.borderColor = '#5e72e4';
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.style.backgroundColor = '#f8f9fa';
+    dropZone.style.borderColor = '#344767';
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.backgroundColor = '#f8f9fa';
+    dropZone.style.borderColor = '#344767';
+    if (e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        handleFileSelect(fileInput.files);
+    }
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        handleFileSelect(fileInput.files);
+    }
+});
+
+function handleFileSelect(files) {
+    const invalid = Array.from(files).filter(f => !f.name.toLowerCase().endsWith('.csv'));
+    if (invalid.length > 0) {
+        fileNameDisplay.innerHTML = '<span class="text-danger"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">error</i> All files must be .csv</span>';
+        uploadBtn.disabled = true;
+        return;
+    }
+    const icons = { 'users.csv': 'group', 'sites.csv': 'location_city' };
+    const lines = Array.from(files).map(f => {
+        const icon = icons[f.name.toLowerCase()] || 'description';
+        return `<span class="text-success me-3"><i class="material-symbols-rounded position-relative" style="font-size:0.9rem;vertical-align:middle;">${icon}</i> ${f.name}</span>`;
+    });
+    fileNameDisplay.innerHTML = lines.join('');
+    uploadBtn.disabled = false;
+}
+
+// FTP password toggle
+document.getElementById('toggleFtpPwd').addEventListener('click', () => {
+    const input = document.getElementById('ftp_password');
+    const icon  = document.getElementById('ftpPwdIcon');
+    input.type = input.type === 'password' ? 'text' : 'password';
+    icon.textContent = input.type === 'password' ? 'visibility' : 'visibility_off';
+});
+
+// Save FTP settings to Organization
+const FTP_SAVE_URL = "{{ url_for('routes.ftp_save_settings') }}";
+function saveFtpSettings() {
+    document.getElementById('ftpForm').action = FTP_SAVE_URL;
+    document.getElementById('ftpForm').submit();
+}
+
+// Activate the correct tab from ?tab=xxx query param
+(function () {
+    const params = new URLSearchParams(window.location.search);
+    const map = { ftp: 'ftp-tab', csv: 'csv-tab', sites: 'sites-tab' };
+    const tabId = map[params.get('tab')];
+    if (tabId) bootstrap.Tab.getOrCreateInstance(document.getElementById(tabId)).show();
+})();
+
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+tooltipTriggerList.forEach(function (el) {
+    new bootstrap.Tooltip(el);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,92 @@
+<!--
+=========================================================
+* TrackITk12
+=========================================================
+
+* Product Page: 
+* Licensed under MIT GNU v3.0
+
+=========================================================
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ current_page_name }}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <!-- Material Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+  <!-- CSS Files -->
+  <link id="pagestyle" href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet" />
+  <link id="pagestyle" href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet" />
+</head>
+<body class="g-sidenav-show  bg-gray-100">
+    <a href="#content" class="visually-hidden-focusable">Skip to main content</a>
+
+ <!-- Navigation bar -->
+    {% include './includes/nav.html' %}
+    
+
+ <!-- notifications + flash messages -->
+<div id="alert-container" class="alert-container-box" aria-live="polite" aria-atomic="false">
+    {% for notification in active_notifications %}
+    <div class="warning-message-box alert alert-dismissible fade show mb-2" role="alert">
+        <span>{{ notification.msg_content }}</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="warning-message-box border-radius-lg alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'info' if category == 'info' else 'warning' }} alert-dismissible text-white fade show mb-2" role="alert">
+            <span>{{ message }}</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+</div>
+ <!-- end notifications + flash messages -->
+
+
+
+  
+
+   <!-- main content -->
+    <main id="content">
+        <h1 class="visually-hidden">{{ current_page_name }}</h1>
+        {% block content %}
+        {% endblock %}
+    </main>
+   <!-- end main content -->
+
+
+   <!-- Shared delete-confirmation modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1"
+     aria-labelledby="deleteModalTitle" aria-describedby="deleteModalMessage" aria-modal="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title d-flex align-items-center gap-2" id="deleteModalTitle">
+          <i class="material-symbols-rounded text-danger" style="font-size:1.3rem;vertical-align:middle;">warning</i>
+          <span id="deleteModalTitleText">Confirm Delete</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cancel"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <p id="deleteModalMessage" class="mb-0"></p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="deleteModalConfirmBtn" class="btn btn-danger btn-sm">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+   <!-- footer -->
+    {% include './includes/footer.html' %}
