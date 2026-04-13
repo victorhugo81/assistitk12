@@ -823,18 +823,15 @@ def _process_sites_rows(rows):
 
 
 # ****************** Upload Users Page *******************************
-@routes_blueprint.route('/upload-users', methods=['GET'])
+@routes_blueprint.route('/bulk-data-upload', methods=['GET'])
 @login_required
 def upload_users():
     is_admin()
     log_page  = request.args.get('log_page', 1, type=int)
     per_page  = 10
-    user_logs = BulkUploadLog.query.filter(
-        ~BulkUploadLog.filename.startswith('[Sites]')
-    ).order_by(BulkUploadLog.uploaded_at.desc()).paginate(page=log_page, per_page=per_page, error_out=False)
-    site_logs = BulkUploadLog.query.filter(
-        BulkUploadLog.filename.startswith('[Sites]')
-    ).order_by(BulkUploadLog.uploaded_at.desc()).all()
+    user_logs = BulkUploadLog.query.order_by(
+        BulkUploadLog.uploaded_at.desc()
+    ).paginate(page=log_page, per_page=per_page, error_out=False)
     org  = db.session.get(Organization, 1)
     ftp_host_plain     = ''
     ftp_username_plain = ''
@@ -847,12 +844,11 @@ def upload_users():
             schedule_time = f"{org.ftp_schedule_hour:02d}:{org.ftp_schedule_minute or 0:02d}"
     return render_template('bulk_upload_data.html',
                            user_logs=user_logs,
-                           site_logs=site_logs,
                            org=org,
                            ftp_host_plain=ftp_host_plain,
                            ftp_username_plain=ftp_username_plain,
                            ftp_schedule_time=schedule_time,
-                           current_page_name='Bulk Upload Users')
+                           current_page_name='Bulk Data Upload')
 
 
 # ****************** Import Bulk Users *******************************
@@ -1242,8 +1238,8 @@ def ftp_bulk_upload_users():
         elif isinstance(e, TimeoutError):
             friendly = f"Connection to '{ftp_host}' timed out. The server may be down or blocked by a firewall."
         elif isinstance(e, ftplib.error_perm):
-            msg_lower = str(e).lower()
-            if any(code in str(e) for code in ('530', '331', '332')):
+            msg_lower = str(e)
+            if any(code in msg_lower for code in ('530', '331', '332')):
                 friendly = 'FTP login failed. Check your username and password.'
             else:
                 friendly = f'FTP error: {e}'
@@ -1992,10 +1988,8 @@ def delete_attachment(attachment_id):
 @routes_blueprint.route('/edit_ticket/<int:ticket_id>', methods=['GET', 'POST'])
 @login_required
 def edit_ticket(ticket_id):
-    # Mapping paths to page names
-    page_names = {'/edit_ticket/<int:ticket_id>': 'Manage Ticket'}
     current_path = request.path
-    current_page_name = page_names.get(current_path, 'Unknown Page')
+    current_page_name = 'Manage Ticket'
 
     ticket = Ticket.query.options(db.joinedload(Ticket.contents)).get_or_404(ticket_id)
 

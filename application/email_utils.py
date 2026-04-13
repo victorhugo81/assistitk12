@@ -1,12 +1,19 @@
 from flask import current_app
 from flask_mail import Message
-from main import mail
+from main import mail, db
 
 STATUS_LABELS = {
     '1-pending': 'Pending',
     '2-progress': 'In Progress',
     '3-completed': 'Completed',
 }
+
+
+def _is_mail_configured():
+    """Return True only if the Organization has SMTP credentials saved."""
+    from application.models import Organization
+    org = db.session.get(Organization, 1)
+    return bool(org and org.mail_server and org.mail_username)
 
 
 def send_ticket_notification(event, ticket, **kwargs):
@@ -20,6 +27,8 @@ def send_ticket_notification(event, ticket, **kwargs):
         'escalated' - escalation toggled (kwargs: escalated bool) → notifies creator + assignee
         'comment'   - new comment added (kwargs: commenter) → notifies the other party
     """
+    if not _is_mail_configured():
+        return
     try:
         recipients = []
         subject = ''
@@ -137,6 +146,9 @@ def send_ticket_notification(event, ticket, **kwargs):
 
 def send_temp_password_email(user, temp_password):
     """Send a temporary password to a user and instruct them to change it on first login."""
+    if not _is_mail_configured():
+        current_app.logger.info("Temp password email skipped — no SMTP configuration saved.")
+        return
     try:
         msg = Message(
             subject="Your Temporary Password — AssistITK12",
@@ -158,6 +170,8 @@ def send_temp_password_email(user, temp_password):
 
 def send_password_updated_email(user):
     """Notify a user that their password was manually updated by an administrator."""
+    if not _is_mail_configured():
+        return
     try:
         msg = Message(
             subject="Your Password Has Been Updated — AssistITK12",

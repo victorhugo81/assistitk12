@@ -44,7 +44,7 @@ ADMIN_ONLY_ROUTES = [
     '/add_site',
     '/titles',
     '/notifications',
-    '/upload-users',
+    '/bulk-data-upload',
 ]
 
 

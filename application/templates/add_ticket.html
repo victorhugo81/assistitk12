@@ -42,7 +42,7 @@
                                 <input type="file" name="attachment" class="form-control" 
                                        accept=".jpg,.jpeg,.png,.pdf" multiple>
                             </div>
-                            <small class="text-muted">Allowed: JPG, PNG, PDF (Max 5MB)</small>
+                            <small class="text-muted">Allowed: JPG, PNG, PDF (Max 12MB)</small>
                             <div id="fileError" class="text-danger"></div>
                         </div>
 
@@ -64,17 +64,17 @@ document.getElementById('ticketForm').addEventListener('submit', function(e) {
     if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        
+        const maxSize = 12 * 1024 * 1024; // 12MB
+
         if (!validTypes.includes(file.type)) {
             e.preventDefault();
             fileError.textContent = 'Only JPG, PNG, and PDF files are allowed.';
             return;
         }
-        
+
         if (file.size > maxSize) {
             e.preventDefault();
-            fileError.textContent = 'File size exceeds 5MB limit.';
+            fileError.textContent = 'File size exceeds 12MB limit.';
             return;
         }
     }

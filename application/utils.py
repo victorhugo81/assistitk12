@@ -88,7 +88,7 @@ def validate_password(password: str, min_length: int = 12) -> Tuple[bool, Option
     return True, None
 
 
-def validate_file_upload(file, allowed_extensions=None, max_size_mb=5):
+def validate_file_upload(file, allowed_extensions=None, max_size_mb=12):
     """
     Validate uploaded files for security using both extension and magic byte checks.
 
