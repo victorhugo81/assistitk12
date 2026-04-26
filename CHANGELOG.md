@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-04-26
+
+### Changed
+- UI redesign: migrated stylesheet to a CSS custom-property design system (color palette, shadow scale, border-radius scale, spacing scale, transition tokens).
+- Switched body font to Inter via Google Fonts for a modern, neutral appearance.
+- Login page: increased "Sign In" heading size and weight; adjusted login panel layout to `flex-direction: column` with `align-items: stretch` for better vertical alignment.
+
 ## [1.1.0] - 2026-04-12
 
 ### Added
