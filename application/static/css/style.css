@@ -656,8 +656,8 @@ a.user-welcome {
 
 .small-cards-dashboard {
   padding: 10px !important;
-  margin-top: 20px;
-  margin-bottom: 20px;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .custom-title-card {
@@ -1301,6 +1301,9 @@ input.read-only { background: #f3f4f6 !important; color: var(--color-text) !impo
 
 @media (max-width: 575.98px) {
   .navbar-nav .nav-item.dropdown .dropdown-menu { left: 0; right: auto; }
+  /* Stat cards: row g-3 already gives 1rem gap; drop the extra mb-4 */
+  .col-xl-3.col-sm-6.mb-4,
+  .col-xl-3.col-sm-6.mb-xl-0 { margin-bottom: 0 !important; }
 }
 
 /* ==========================================================================
@@ -1672,12 +1675,18 @@ hr.horizontal.gray-light { background-image: linear-gradient(to right, rgba(0,0,
 .navbar-vertical.bg-transparent .navbar-nav .nav-link.active:after,
 .navbar-vertical.bg-white .navbar-nav .nav-link.active:after { color: rgba(206,212,218,0.7) !important; }
 
-.navbar-main { 
-  transition: box-shadow 0.15s ease, background-color 0.15s ease; 
-  margin-top:10px;
+.navbar-main {
+  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+  margin-top: 10px;
   margin-bottom: 10px;
-  max-height: 50px;
-  padding:30px;
+  padding: 0 0.75rem;
+}
+@media (max-width: 767.98px) {
+  .navbar-main {
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding: 0 0.25rem;
+  }
 }
 .navbar-main.fixed-top { width: calc(100% - (14rem + 1.5rem * 3)); }
 .navbar-main.fixed-top + [class*=container] { margin-top: 7.1875rem !important; }
@@ -1826,7 +1835,6 @@ hr.horizontal.gray-light { background-image: linear-gradient(to right, rgba(0,0,
   justify-content: center;
   padding: 3rem 2.5rem;
 }
-
 .login-wrap h3 { font-weight: 300; color: var(--color-text); }
 
 .login-form-group { position: relative; margin-bottom: 1.25rem; }
