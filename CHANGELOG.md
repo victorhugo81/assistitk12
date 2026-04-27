@@ -59,4 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Base HTML templates and includes (nav, footer).
 - Static files structure: CSS, JS, images, uploads.
 
+
+## [1.0.0] - 2025-04-27
+
+### Added
+ - update mobile resolution for dashboard
 ---
