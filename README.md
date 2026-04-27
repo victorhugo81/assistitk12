@@ -1,6 +1,6 @@
 # AssistITK12
 
-![AssistITK12 Logo](https://assistitk12.com/wp-content/uploads/2025/05/logo.png)
+![AssistITK12 Logo](https://apps.zavistar.com/wp-content/uploads/2025/05/logo.png)
 
 AssistITK12 is a web-based ticketing system designed to help school districts manage support requests, maintenance issues, and other technical problems. It's built with Flask and Bootstrap to provide a user-friendly and efficient solution.
 
@@ -134,13 +134,13 @@ Open a web browser and navigate to the URL displayed in your terminal (usually h
 Enter the admin email and password you previously configured.
 - Password must be at least 12 characters long and contain uppercase letters, lowercase letters, numbers, and special characters.
 
-![Login Screen](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-login.png)
+![Login Screen](https://apps.zavistar.com/wp-content/uploads/2025/05/screenshot-login.png)
 
 ### Dashboard - Data Visualization
 
 The dashboard provides an overview of all tickets, their statuses, and key metrics to help identify trends and areas for improvement.
 
-![Dashboard](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-dashboard-scaled.png)
+![Dashboard](https://apps.zavistar.com/wp-content/uploads/2025/05/screenshot-dashboard-scaled.png)
 
 ### Creating a ticket
 
@@ -149,7 +149,7 @@ The dashboard provides an overview of all tickets, their statuses, and key metri
 3. Fill in the required details
 4. Click the "Submit Ticket" button
 
-![Create Ticket](https://assistitk12.com/wp-content/uploads/2025/05/screenshot-new-ticket-1536x820.png)
+![Create Ticket](https://apps.zavistar.com/wp-content/uploads/2025/05/screenshot-new-ticket-1536x820.png)
 
 ## Troubleshooting
 
