@@ -117,7 +117,7 @@ def create_app(config_name='default'):
         return response
 
     # Override Flask-Mail config with any settings stored in the database.
-    # This ensures ticket notifications use the admin-configured SMTP settings
+    # This ensures notifications use the admin-configured SMTP settings
     # on every startup, not just after the settings form is saved.
     with app.app_context():
         try:
