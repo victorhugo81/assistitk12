@@ -18,7 +18,7 @@ def run_org_ftp_schedule():
 
     with scheduler.app.app_context():
         from flask import current_app
-        from application.models import Organization, BulkUploadLog, User, Site
+        from application.models import Organization, BulkUploadLog, User, Site, Role
         from application.utils import decrypt_mail_password, hash_email
         from application.routes import _process_sites_rows
         from werkzeug.security import generate_password_hash
@@ -93,10 +93,14 @@ def run_org_ftp_schedule():
 
             # First pass: validate all rows and collect emails
             csv_emails = set()
+            valid_role_ids = {r.id for r in Role.query.with_entities(Role.id).all()}
             for row in rows:
                 if not all([row.get('first_name'), row.get('last_name'), row.get('email'),
                             row.get('role_id'), row.get('site_name'), row.get('rm_num')]):
                     raise ValueError('Some rows are missing required fields.')
+                raw_role_id = int(row['role_id'])
+                if raw_role_id not in valid_role_ids:
+                    raise ValueError(f"Row for '{row.get('email')}' has invalid role_id {raw_role_id!r}.")
                 site = Site.query.filter_by(site_name=row['site_name']).first()
                 if not site:
                     raise ValueError(f"Site '{row['site_name']}' not found.")
@@ -104,6 +108,7 @@ def run_org_ftp_schedule():
 
             # Second pass: upsert users
             for row in rows:
+                raw_role_id = int(row['role_id'])
                 site = Site.query.filter_by(site_name=row['site_name']).first()
                 existing = User.query.filter_by(email_hash=hash_email(row['email'].strip(), key)).first()
                 if existing:
@@ -111,7 +116,7 @@ def run_org_ftp_schedule():
                     existing.middle_name = row.get('middle_name') or None
                     existing.last_name   = row['last_name']
                     existing.rm_num      = row.get('rm_num') or existing.rm_num
-                    existing.role_id     = int(row['role_id'])
+                    existing.role_id     = raw_role_id
                     existing.site_id     = site.id
                     existing.status      = row.get('status') or 'Active'
                     users_updated += 1
@@ -125,14 +130,15 @@ def run_org_ftp_schedule():
                         password=generate_password_hash(secrets.token_urlsafe(16)),
                         must_change_password=True,
                         rm_num=row.get('rm_num'),
-                        role_id=row['role_id'],
+                        role_id=raw_role_id,
                         site_id=site.id
                     ))
                     users_added += 1
 
-            # Third pass: deactivate users absent from the CSV
+            # Third pass: deactivate users absent from the CSV.
+            # Admin accounts (role_id=1) are excluded to prevent accidental lockout.
             sched_csv_hashes = {hash_email(e, key) for e in csv_emails}
-            for user in User.query.filter(User.status == 'Active').all():
+            for user in User.query.filter(User.status == 'Active', User.role_id != 1).all():
                 if user.email_hash not in sched_csv_hashes:
                     user.status = 'Inactive'
 

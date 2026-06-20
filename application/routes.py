@@ -1,13 +1,13 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, current_app, send_from_directory, jsonify, session, make_response
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, current_app, send_from_directory, jsonify, session
 from flask_limiter.util import get_remote_address
 from flask_login import login_user, login_required, logout_user, current_user
 from flask_paginate import Pagination, get_page_args
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from .models import User, Role, Site, Notification, Organization, BulkUploadLog, Student, Teacher, Course, Parent, Absence, Incident, Grade
-from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, EmailConfigForm, StudentForm, TeacherForm, CourseForm, ParentForm
+from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment, BulkUploadLog
+from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, EmailConfigForm, TicketForm, TitleForm, TicketContentForm
 from .utils import validate_password, validate_file_upload, encrypt_mail_password, decrypt_mail_password, hash_email
-from .email_utils import send_temp_password_email, send_password_updated_email
+from .email_utils import send_ticket_notification, send_temp_password_email, send_password_updated_email
 from main import db, login_manager, mail, limiter, scheduler
 from flask_mail import Message
 from datetime import datetime, timedelta, timezone
@@ -45,94 +45,6 @@ def inject_active_notifications():
     except Exception:
         notifications = []
     return dict(active_notifications=notifications)
-
-
-@routes_blueprint.app_context_processor
-def inject_org():
-    try:
-        org = db.session.get(Organization, 1)
-    except Exception:
-        org = None
-    return dict(org=org)
-
-
-@routes_blueprint.app_context_processor
-def inject_global_school_year():
-    try:
-        school_years = [r[0] for r in
-                        db.session.query(Student.schoolyr)
-                        .filter(Student.schoolyr.isnot(None), Student.schoolyr != '')
-                        .distinct().order_by(Student.schoolyr.desc()).all()]
-        global_sites         = Site.query.order_by(Site.site_name).all()
-        active_schoolyr      = session.get('active_schoolyr', '')
-        active_status_filter = session.get('active_status_filter', 'active')
-        active_site_filter   = session.get('active_site_filter', '')
-        active_snap_date     = session.get('active_snap_date', '')
-        active_site = next(
-            (s.site_name for s in global_sites if str(s.id) == active_site_filter),
-            ''
-        )
-    except Exception:
-        school_years, global_sites                          = [], []
-        active_schoolyr, active_status_filter               = '', 'active'
-        active_site_filter, active_snap_date, active_site   = '', '', ''
-    return dict(global_school_years=school_years, global_sites=global_sites,
-                active_schoolyr=active_schoolyr, active_status_filter=active_status_filter,
-                active_site_filter=active_site_filter, active_snap_date=active_snap_date,
-                active_site=active_site)
-
-
-@routes_blueprint.before_request
-def set_session_defaults():
-    """Set first-visit session defaults before any route reads them."""
-    if not current_user.is_authenticated:
-        return
-    if 'active_schoolyr' not in session:
-        try:
-            row = db.session.query(Student.schoolyr)\
-                    .filter(Student.schoolyr.isnot(None), Student.schoolyr != '')\
-                    .distinct().order_by(Student.schoolyr.desc()).first()
-            session['active_schoolyr'] = row[0] if row else ''
-        except Exception:
-            session['active_schoolyr'] = ''
-
-
-@routes_blueprint.route('/set_school_year')
-@login_required
-def set_school_year():
-    yr = request.args.get('yr', '').strip()
-    if not yr:
-        # Fall back to the most recent available year
-        row = db.session.query(Student.schoolyr)\
-                .filter(Student.schoolyr.isnot(None), Student.schoolyr != '')\
-                .distinct().order_by(Student.schoolyr.desc()).first()
-        yr = row[0] if row else ''
-    session['active_schoolyr'] = yr
-    return redirect(request.referrer or url_for('routes.index'))
-
-
-@routes_blueprint.route('/set_site_filter')
-@login_required
-def set_site_filter():
-    session['active_site_filter'] = request.args.get('sf', '').strip()
-    return redirect(request.referrer or url_for('routes.index'))
-
-
-@routes_blueprint.route('/set_snap_date')
-@login_required
-def set_snap_date():
-    session['active_snap_date'] = request.args.get('d', '').strip()
-    return redirect(request.referrer or url_for('routes.index'))
-
-
-@routes_blueprint.route('/set_status_filter')
-@login_required
-def set_status_filter():
-    sf = request.args.get('sf', 'active').strip()
-    if sf not in ('active', 'inactive', 'all'):
-        sf = 'active'
-    session['active_status_filter'] = sf
-    return redirect(request.referrer or url_for('routes.index'))
 
 
 # *****************************************************************
@@ -452,6 +364,9 @@ def test_email():
     if not recipient:
         return jsonify({'success': False, 'message': 'Recipient email is required.'}), 400
 
+    if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', recipient):
+        return jsonify({'success': False, 'message': 'Invalid recipient email address.'}), 400
+
     try:
         msg = Message(
             subject='Test Email – AssistITK12',
@@ -467,7 +382,7 @@ def test_email():
         return jsonify({'success': True, 'message': f'Test email sent to {recipient}.'})
     except Exception as e:
         current_app.logger.error(f"Test email failed: {type(e).__name__}: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'success': False, 'message': 'Failed to send email. Check server logs for details.'}), 500
 
 
 # *****************************************************************
@@ -479,27 +394,119 @@ def test_email():
 @routes_blueprint.route('/', methods=['GET', 'POST'])
 @login_required
 def index():
-    org = db.session.get(Organization, 1)
+    # Mapping paths to page names
+    page_names = {'/': 'Dashboard'}
+    current_path = request.path
+    current_page_name = page_names.get(current_path, 'Unknown Page')
+
+    # Get the current user's details
+    current_user_role = current_user.role_id
+    current_user_site_id = current_user.site_id
+    current_user_id = current_user.id
+
+    # Get the current year and selected year from query parameters
+    current_year = datetime.now().year
+    selected_year = request.args.get('year', type=int)  # Default is None for "All Years"
+
+    # Fetch available years dynamically from ticket data
+    available_years = sorted([
+        int(year[0]) for year in Ticket.query.with_entities(
+            db.func.extract('year', Ticket.created_at).distinct()
+        ).all()
+    ], reverse=True)
+
+
+    # Role-based site filtering 
+    if current_user_role in [1, 2]:  # Admin or Manager
+        sites = Site.query.all()
+        selected_site_id = request.args.get('site_id', type=int)  # Selected site from dropdown        
+    elif current_user_role == 3:  # Limited user
+        sites = Site.query.filter_by(id=current_user_site_id).all()
+        selected_site_id = current_user_site_id
+    else:  # Regular user
+        sites = Site.query.filter_by(id=current_user_site_id).all()
+        selected_site_id = current_user_site_id
+
+    # Base query filter
+    query_filter = []
+    if selected_year:  # If a specific year is selected, filter by year
+        query_filter.append(db.func.extract('year', Ticket.created_at) == selected_year)
+
+    # Query ticket counts based on role and filters
+    if current_user_role in [1, 2]:  # Admin or Manager
+        if selected_site_id:  # Filter by selected site
+            query_filter.append(Ticket.site_id == selected_site_id)
+        pending_count = Ticket.query.filter(Ticket.tck_status == '1-pending', *query_filter).count()
+        in_progress_count = Ticket.query.filter(Ticket.tck_status == '2-progress', *query_filter).count()
+        completed_count = Ticket.query.filter(Ticket.tck_status == '3-completed', *query_filter).count()
+    elif current_user_role == 3:  # Limited user: tickets for their site
+        query_filter.append(Ticket.site_id == current_user_site_id)
+        pending_count = Ticket.query.filter(Ticket.tck_status == '1-pending', *query_filter).count()
+        in_progress_count = Ticket.query.filter(Ticket.tck_status == '2-progress', *query_filter).count()
+        completed_count = Ticket.query.filter(Ticket.tck_status == '3-completed', *query_filter).count()
+    else:  # Regular user: only their own tickets
+        query_filter.append(Ticket.user_id == current_user_id)
+        pending_count = Ticket.query.filter(Ticket.tck_status == '1-pending', *query_filter).count()
+        in_progress_count = Ticket.query.filter(Ticket.tck_status == '2-progress', *query_filter).count()
+        completed_count = Ticket.query.filter(Ticket.tck_status == '3-completed', *query_filter).count()
+
+    # Calculate the total count
+    total_count = pending_count + in_progress_count + completed_count
+
+    # Query to get the top 5 most popular titles with filters applied
+    top_titles_query = (
+        db.session.query(Title.title_name,func.count(Ticket.id).label('ticket_count'))
+        .join(Ticket, Title.id == Ticket.title_id).filter(*query_filter)  # Apply the filters
+        .group_by(Title.title_name).order_by(func.count(Ticket.id).desc()).limit(5).all())
+
+    # Add an index to the top_titles data
+    top_titles = [
+        {"rank": idx + 1, "title_name": title_name, "ticket_count": ticket_count}
+        for idx, (title_name, ticket_count) in enumerate(top_titles_query)
+    ]
+
+    # Initialize counts for all 12 months
+    ticket_counts = {month: 0 for month in range(1, 13)}
+
+    # Fetch tickets and count them per month
+    for ticket in db.session.query(Ticket).filter(*query_filter).all():
+        month = ticket.created_at.month  # Ensure this is between 1 and 12
+        if 1 <= month <= 12:  # Extra safeguard
+            ticket_counts[month] += 1
+
+    # Use full month names for clarity
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    counts = [ticket_counts[month] for month in range(1, 13)]  # Ensure all 12 months are included
+
+        # Fetch ticket counts for each weekday (Monday to Friday) for the bar chart
+    weekday_counts = {day: 0 for day in range(1, 6)}  # Initialize counts for Monday to Friday
+    for ticket in db.session.query(Ticket).filter(*query_filter).all():
+        weekday = ticket.created_at.weekday() + 1  # Monday = 1, Sunday = 7
+        if weekday in weekday_counts:
+            weekday_counts[weekday] += 1
+
+    weekdays = ["M", "T", "W", "Th", "F"]
+    weekday_counts_list = [weekday_counts[day] for day in range(1, 6)]
+
+
+    # Render the template with the context
     return render_template(
         'index.html',
-        current_page_name='Dashboard',
-        org=org,
+        available_years=available_years,
+        selected_year=selected_year,
+        sites=sites,
+        current_page_name=current_page_name,
+        selected_site_id=selected_site_id,
+        pending_count=pending_count,
+        in_progress_count=in_progress_count,
+        completed_count=completed_count,
+        total_count=total_count,
+        top_titles=top_titles,
+        months=months,
+        counts=counts,
+        weekdays=weekdays,
+        weekday_counts=weekday_counts_list
     )
-
-
-# ****************** Card Visibility *******************************
-@routes_blueprint.route('/organization/card-visibility', methods=['POST'])
-@login_required
-def card_visibility():
-    is_admin()
-    org = Organization.query.get_or_404(1)
-    cards = ['demographics', 'absenteeism', 'discipline', 'swd',
-             'registration', 'enrollment', 'attendance_rates']
-    for card in cards:
-        setattr(org, f'show_{card}', f'show_{card}' in request.form)
-    db.session.commit()
-    flash('Dashboard card visibility updated.', 'success')
-    return redirect(url_for('routes.organization') + '#dashboard-cards')
 
 
 # ***************************************************************
@@ -896,29 +903,34 @@ def bulk_upload_users():
                 # Build site lookup cache and validate all rows
                 csv_emails = set()
                 site_cache = {}
+                valid_role_ids = {r.id for r in Role.query.with_entities(Role.id).all()}
                 for row in rows:
                     if not all([row.get('first_name'), row.get('last_name'), row.get('email'),
                                 row.get('role_id'), row.get('site_name'), row.get('rm_num')]):
                         raise ValueError('Some rows in the CSV file are missing required fields.')
+                    raw_role_id = int(row['role_id'])
+                    if raw_role_id not in valid_role_ids:
+                        raise ValueError(f"Row for '{row.get('email')}' has invalid role_id {raw_role_id!r}.")
                     name = row['site_name'].strip()
                     if name not in site_cache:
                         site = Site.query.filter_by(site_name=name).first()
                         if not site:
                             raise ValueError(f"Site '{name}' not found. Please verify the CSV file.")
                         site_cache[name] = site.id
-                    csv_emails.add(row['email'].strip())
+                    csv_emails.add(row['email'].strip().lower())
 
                 # Upsert users
                 _bulk_key = current_app.config['SECRET_KEY']
                 for row in rows:
                     site_id = site_cache[row['site_name'].strip()]
+                    raw_role_id = int(row['role_id'])
                     existing_user = User.query.filter_by(email_hash=hash_email(row['email'].strip(), _bulk_key)).first()
                     if existing_user:
                         existing_user.first_name  = row['first_name']
                         existing_user.middle_name = row.get('middle_name') or None
                         existing_user.last_name   = row['last_name']
                         existing_user.rm_num      = row.get('rm_num') or existing_user.rm_num
-                        existing_user.role_id     = int(row['role_id'])
+                        existing_user.role_id     = raw_role_id
                         existing_user.site_id     = site_id
                         existing_user.status      = row.get('status') or 'Active'
                         updated += 1
@@ -932,16 +944,18 @@ def bulk_upload_users():
                             password=generate_password_hash(secrets.token_urlsafe(16)),
                             must_change_password=True,
                             rm_num=row.get('rm_num') or None,
-                            role_id=int(row['role_id']),
+                            role_id=raw_role_id,
                             site_id=site_id
                         ))
                         added += 1
 
-                # Flush pending inserts/updates, then deactivate absent users
+                # Flush pending inserts/updates, then deactivate absent users.
+                # Admin accounts (role_id=1) are excluded to prevent accidental lockout.
                 db.session.flush()
                 csv_email_hashes = {hash_email(e, _bulk_key) for e in csv_emails}
                 deactivated = User.query.filter(
                     User.status == 'Active',
+                    User.role_id != 1,
                     ~User.email_hash.in_(csv_email_hashes)
                 ).update({'status': 'Inactive'}, synchronize_session=False)
 
@@ -1161,10 +1175,14 @@ def ftp_bulk_upload_users():
 
         # First pass: validate all rows and collect emails
         csv_emails = set()
+        valid_role_ids = {r.id for r in Role.query.with_entities(Role.id).all()}
         for row in rows:
             if not all([row.get('first_name'), row.get('last_name'), row.get('email'),
                         row.get('role_id'), row.get('site_name'), row.get('rm_num')]):
                 raise ValueError('Some rows in the CSV file are missing required fields.')
+            raw_role_id = int(row['role_id'])
+            if raw_role_id not in valid_role_ids:
+                raise ValueError(f"Row for '{row.get('email')}' has invalid role_id {raw_role_id!r}.")
             site = Site.query.filter_by(site_name=row['site_name']).first()
             if not site:
                 raise ValueError(f"Site '{row['site_name']}' not found. Please verify the CSV file.")
@@ -1172,6 +1190,7 @@ def ftp_bulk_upload_users():
 
         # Second pass: upsert users
         for row in rows:
+            raw_role_id = int(row['role_id'])
             site = Site.query.filter_by(site_name=row['site_name']).first()
             existing_user = User.query.filter_by(email_hash=hash_email(row['email'].strip(), key)).first()
             if existing_user:
@@ -1179,7 +1198,7 @@ def ftp_bulk_upload_users():
                 existing_user.middle_name = row.get('middle_name') or None
                 existing_user.last_name   = row['last_name']
                 existing_user.rm_num      = row.get('rm_num') or existing_user.rm_num
-                existing_user.role_id     = int(row['role_id'])
+                existing_user.role_id     = raw_role_id
                 existing_user.site_id     = site.id
                 existing_user.status      = row.get('status') or 'Active'
                 users_updated += 1
@@ -1193,15 +1212,16 @@ def ftp_bulk_upload_users():
                     password=generate_password_hash(secrets.token_urlsafe(16)),
                     must_change_password=True,
                     rm_num=row.get('rm_num', None),
-                    role_id=row['role_id'],
+                    role_id=raw_role_id,
                     site_id=site.id
                 ))
                 users_added += 1
 
-        # Third pass: deactivate users absent from the CSV
+        # Third pass: deactivate users absent from the CSV.
+        # Admin accounts (role_id=1) are excluded to prevent accidental lockout.
         users_deactivated = 0
         ftp_csv_hashes = {hash_email(e, key) for e in csv_emails}
-        for user in User.query.filter(User.status == 'Active').all():
+        for user in User.query.filter(User.status == 'Active', User.role_id != 1).all():
             if user.email_hash not in ftp_csv_hashes:
                 user.status = 'Inactive'
                 users_deactivated += 1
@@ -1690,1847 +1710,620 @@ def delete_notification(notification_id):
     return redirect(url_for('routes.notifications'))
 
 
-_GRADE_LIST = ['TK', 'KN', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
 
 
-# =============================================================================
-# STUDENTS
-# =============================================================================
-
-@routes_blueprint.route('/students', methods=['GET'])
+# *********************************************************************
+# ****************** Tickets Management Page *******************************
+@routes_blueprint.route('/tickets', methods=['GET'])
 @login_required
-def students():
-    page, per_page, offset = get_page_args(page_parameter='page', per_page_parameter='per_page')
-    search          = request.args.get('search', '').strip()
-    _url_site       = request.args.get('site_filter', '').strip()
-    site_filter     = _url_site if _url_site else session.get('active_site_filter', '')
-    grade_filter    = request.args.get('grade_filter', '').strip()
-    subgroups       = [s.strip() for s in request.args.getlist('subgroup') if s.strip()]
-    english_status  = [s.strip() for s in request.args.getlist('english_status') if s.strip()]
-    gender_filters  = [s.strip() for s in request.args.getlist('gender') if s.strip()]
-    status_filter   = session.get('active_status_filter', 'active')
-    schoolyr_filter = session.get('active_schoolyr', '')
-    today           = datetime.now().date()
+def tickets():
+    # Mapping paths to page names
+    page_names = {'/tickets': 'Manage Tickets'}
+    current_path = request.path
+    current_page_name = page_names.get(current_path, 'Unknown Page')
 
-    _SUBGROUP_LABELS = {
-        'homeless': 'Homeless / Dwelling',
-        'frm':      'Free / Reduced Meal',
-        'swd':      'Students with Disability',
-        'no_ssid':  'Missing SSID',
-        'foster':   'Foster Youth',
-        'migrant':  'Migrant',
-        'sed504':   '504 Plan',
-    }
+    # Get query parameters
+    site_filter = request.args.get('site_filter', '')
+    status_filter = request.args.get('status_filter', '').strip()
+    assigned_user_filter = request.args.get('assigned_user_filter', '')
 
-    query = Student.query
-    if status_filter == 'active':
-        query = query.filter(
-            db.or_(Student.enter_date.is_(None), Student.enter_date <= today),
-            db.or_(Student.exit_date.is_(None),  Student.exit_date  >= today),
-        )
-    elif status_filter == 'inactive':
-        query = query.filter(
-            Student.exit_date.isnot(None),
-            Student.exit_date < today,
-        )
-    if search:
-        query = query.filter(
-            db.or_(Student.first_name.ilike(f'%{search}%'),
-                   Student.last_name.ilike(f'%{search}%'),
-                   Student.student_id.ilike(f'%{search}%'))
-        )
+    # Fetch the current user's role and site information
+    current_user_role_id = current_user.role_id  
+    current_user_site_id = current_user.site_id  
+
+    # Start the query with explicit joins
+    query = Ticket.query.join(User, Ticket.user_id == User.id).join(Site, Site.id == User.site_id)
+
+    # Apply role-specific filtering
+    if current_user_role_id == 3:
+        query = query.filter(Site.id == current_user_site_id)
+    elif current_user_role_id not in [1, 2, 3]:
+        query = query.filter(Site.id == current_user_site_id, Ticket.user_id == current_user.id)
+
+    # Apply site filter if provided
     if site_filter:
-        query = query.filter(Student.site_id == site_filter)
-    if grade_filter:
-        query = query.filter(Student.grade == grade_filter)
-    if subgroups:
-        _sg_conditions = {
-            'homeless': db.and_(Student.dwelling.isnot(None), Student.dwelling != ''),
-            'frm':      Student.frm_code.in_(['F', 'R']),
-            'swd':      db.and_(Student.disability.isnot(None), Student.disability != ''),
-            'foster':   Student.foster == True,
-            'migrant':  Student.migrant == True,
-            'sed504':   Student.sed504 == True,
-            'no_ssid':  db.or_(Student.ssid.is_(None), Student.ssid == ''),
-        }
-        conditions = [_sg_conditions[sg] for sg in subgroups if sg in _sg_conditions]
-        if conditions:
-            query = query.filter(db.and_(*conditions))
-    ethnicity_filter = request.args.get('ethnicity', '').strip()
-    if english_status:
-        query = query.filter(Student.english_status.in_(english_status))
-    if ethnicity_filter:
-        query = query.filter(Student.ethnicity == ethnicity_filter)
-    if gender_filters:
-        query = query.filter(Student.gender.in_(gender_filters))
-    if schoolyr_filter:
-        query = query.filter(Student.schoolyr == schoolyr_filter)
-
-    subgroup_label = ' + '.join(_SUBGROUP_LABELS[sg] for sg in subgroups if sg in _SUBGROUP_LABELS)
-    if english_status:
-        subgroup_label = (subgroup_label + ' · ' if subgroup_label else '') + 'English Status: ' + ', '.join(english_status)
-
-    total      = query.count()
-    students_q = query.order_by(Student.last_name.asc(), Student.first_name.asc()).offset(offset).limit(per_page).all()
-    pagination = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
-    sites = Site.query.order_by(Site.site_name.asc()).all()
-
-    return render_template('students.html',
-        students=students_q, pagination=pagination, per_page=per_page,
-        total=total, sites=sites, grades=_GRADE_LIST,
-        current_page_name='Students',
-        subgroups=subgroups, english_status=english_status, gender_filters=gender_filters, subgroup_label=subgroup_label,
-        schoolyr_filter=schoolyr_filter)
-
-
-@routes_blueprint.route('/students/export/csv')
-@login_required
-def students_export_csv():
-    import csv, io
-    search          = request.args.get('search', '').strip()
-    site_filter     = session.get('active_site_filter', '')
-    grade_filter    = request.args.get('grade_filter', '').strip()
-    subgroups       = [s.strip() for s in request.args.getlist('subgroup') if s.strip()]
-    english_status  = request.args.get('english_status', '').strip()
-    status_filter   = session.get('active_status_filter', 'active')
-    schoolyr_filter = session.get('active_schoolyr', '')
-    today           = datetime.now().date()
-
-    query = Student.query
-    if status_filter == 'active':
-        query = query.filter(
-            db.or_(Student.enter_date.is_(None), Student.enter_date <= today),
-            db.or_(Student.exit_date.is_(None),  Student.exit_date  >= today),
-        )
-    elif status_filter == 'inactive':
-        query = query.filter(Student.exit_date.isnot(None), Student.exit_date < today)
-    if search:
-        query = query.filter(db.or_(
-            Student.first_name.ilike(f'%{search}%'),
-            Student.last_name.ilike(f'%{search}%'),
-            Student.student_id.ilike(f'%{search}%'),
-        ))
-    if site_filter:
-        query = query.filter(Student.site_id == site_filter)
-    if grade_filter:
-        query = query.filter(Student.grade == grade_filter)
-    if subgroups:
-        _sg = {
-            'homeless': db.and_(Student.dwelling.isnot(None), Student.dwelling != ''),
-            'frm':      Student.frm_code.in_(['F', 'R']),
-            'swd':      db.and_(Student.disability.isnot(None), Student.disability != ''),
-            'foster':   Student.foster == True,
-            'migrant':  Student.migrant == True,
-            'sed504':   Student.sed504 == True,
-            'no_ssid':  db.or_(Student.ssid.is_(None), Student.ssid == ''),
-        }
-        conditions = [_sg[s] for s in subgroups if s in _sg]
-        if conditions:
-            query = query.filter(db.and_(*conditions))
-    if english_status:
-        query = query.filter(Student.english_status == english_status)
-    if schoolyr_filter:
-        query = query.filter(Student.schoolyr == schoolyr_filter)
-
-    _eth = {'100':'Native American','200':'Asian','300':'Pacific Islander','400':'Filipino',
-            '500':'Hispanic/Latino','600':'African American','700':'White','900':'Two or More Races'}
-    _gen = {'M':'Male','F':'Female','X':'Non-Binary','U':'Unknown'}
-    _frm = {'F':'Free','R':'Reduced','P':'Paid'}
-    _el  = {'EO':'English Only','EL':'English Learner','IFEP':'IFEP','RFEP':'RFEP','TBD':'TBD'}
-
-    rows = query.order_by(Student.last_name, Student.first_name).all()
-    out  = io.StringIO()
-    w    = csv.writer(out)
-    w.writerow(['Last Name','First Name','Middle Name','Student ID','SSID','Grade','Gender',
-                'Date of Birth','Grad Year','Ethnicity','English Status','FRM','Disability',
-                'Foster','Migrant','Homeless','504 Plan','Site','School Year','Status'])
-    for s in rows:
-        w.writerow([
-            s.last_name, s.first_name, s.middle_name or '',
-            s.student_id, s.ssid or '', s.grade,
-            _gen.get(s.gender, s.gender or ''),
-            s.date_of_birth or '', s.gradyr or '',
-            _eth.get(s.ethnicity, s.ethnicity or ''),
-            _el.get(s.english_status, s.english_status or ''),
-            _frm.get(s.frm_code, s.frm_code or ''),
-            s.disability or '',
-            'Yes' if s.foster  else 'No',
-            'Yes' if s.migrant else 'No',
-            'Yes' if s.dwelling else 'No',
-            'Yes' if s.sed504  else 'No',
-            s.site.site_name, s.schoolyr or '', s.status,
-        ])
-    resp = make_response(out.getvalue())
-    resp.headers['Content-Disposition'] = 'attachment; filename=students_export.csv'
-    resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
-    return resp
-
-
-@routes_blueprint.route('/add_student', methods=['GET', 'POST'])
-@login_required
-def add_student():
-    return redirect(url_for('routes.students'))
-
-
-@routes_blueprint.route('/student/<int:student_id>', methods=['GET'])
-@login_required
-def student_details(student_id):
-    student = Student.query.get_or_404(student_id)
-    student_absences = (Absence.query
-                               .filter(Absence.ssid == student.ssid)
-                               .order_by(Absence.school_yr.desc(), Absence.abs_date.desc())
-                               .all()) if student.ssid else []
-    student_incidents = (Incident.query
-                                 .filter(Incident.sisid == student.ssid)
-                                 .order_by(Incident.incident_date.desc())
-                                 .all()) if student.ssid else []
-    student_grade_records = (Grade.query
-                                   .filter(Grade.grades_stuid == student.student_id)
-                                   .order_by(Grade.grades_courseyr.desc(), Grade.grades_term, Grade.grades_coursenum)
-                                   .all())
-    return render_template('student_details.html', student=student,
-                           student_absences=student_absences,
-                           student_incidents=student_incidents,
-                           student_grade_records=student_grade_records,
-                           current_page_name=f'{student.first_name} {student.last_name}')
-
-
-# =============================================================================
-# STUDENT GRADES
-# =============================================================================
-
-@routes_blueprint.route('/student-grades', methods=['GET'])
-@login_required
-def student_grades():
-    page, per_page, offset = get_page_args(page_parameter='page', per_page_parameter='per_page')
-    search        = request.args.get('search', '').strip()
-    site_filter   = session.get('active_site_filter', '')
-    schoolyr      = session.get('active_schoolyr', '') or '2025-2026'
-    term_filter   = request.args.get('term', '').strip()
-    grade_filter  = request.args.get('grade_letter', '').strip()
-    course_filter = request.args.get('course', '').strip()
-
-    query = (db.session.query(Grade, Student)
-             .join(Student, Student.student_id == Grade.grades_stuid)
-             .filter(Grade.grades_courseyr == schoolyr))
-
-    if search:
-        query = query.filter(db.or_(
-            Student.first_name.ilike(f'%{search}%'),
-            Student.last_name.ilike(f'%{search}%'),
-            Student.student_id.ilike(f'%{search}%'),
-        ))
-    if site_filter:
-        query = query.filter(Student.site_id == site_filter)
-    if term_filter:
-        query = query.filter(Grade.grades_term == term_filter)
-    if grade_filter:
-        query = query.filter(Grade.grades_grade == grade_filter)
-    if course_filter:
-        query = query.filter(Grade.grades_coursenum == course_filter)
-
-    total   = query.count()
-    results = (query.order_by(Student.last_name, Student.first_name, Grade.grades_coursenum, Grade.grades_term)
-               .offset(offset).limit(per_page).all())
-    pagination = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
-
-    terms   = [r[0] for r in db.session.query(Grade.grades_term).filter_by(grades_courseyr=schoolyr).distinct().order_by(Grade.grades_term).all()]
-    courses = [r[0] for r in db.session.query(Grade.grades_coursenum).filter_by(grades_courseyr=schoolyr).distinct().order_by(Grade.grades_coursenum).all()]
-
-    return render_template('student_grades.html',
-        results=results, pagination=pagination, per_page=per_page,
-        total=total, terms=terms, courses=courses,
-        term_filter=term_filter, grade_filter=grade_filter, course_filter=course_filter,
-        current_page_name='Student Grades',
-    )
-
-
-# =============================================================================
-# DEMOGRAPHICS DASHBOARD
-# =============================================================================
-
-@routes_blueprint.route('/demographics')
-@login_required
-def demographics():
-    import json
-
-    site_filter   = session.get('active_site_filter', '')
-    yr_filter     = session.get('active_schoolyr', '')
-    status_filter = session.get('active_status_filter', 'active')
-    snap_date_str = session.get('active_snap_date', '')
-
-    # Parse snapshot date
-    snap_date = None
-    if snap_date_str:
         try:
-            snap_date = datetime.strptime(snap_date_str, '%Y-%m-%d').date()
+            query = query.filter(Site.id == int(site_filter))
         except ValueError:
-            snap_date_str = ''
+            pass
 
-    # Reference date: snapshot date if provided, otherwise today.
-    ref_date = snap_date or datetime.now().date()
-
-    def _date_filter(q):
-        if status_filter == 'active':
-            return q.filter(
-                db.or_(Student.enter_date.is_(None), Student.enter_date <= ref_date),
-                db.or_(Student.exit_date.is_(None),  Student.exit_date  >= ref_date),
-            )
-        elif status_filter == 'inactive':
-            return q.filter(
-                Student.exit_date.isnot(None),
-                Student.exit_date < ref_date,
-            )
-        # 'all' — no date-based status restriction
-        return q
-
-    base = _date_filter(Student.query)
-    if site_filter:
-        base = base.filter(Student.site_id == site_filter)
-    if yr_filter:
-        base = base.filter(Student.schoolyr == yr_filter)
-
-    def agg(col):
-        q = _date_filter(db.session.query(col, func.count(Student.id)))
-        if site_filter:
-            q = q.filter(Student.site_id == site_filter)
-        if yr_filter:
-            q = q.filter(Student.schoolyr == yr_filter)
-        return q.group_by(col).all()
-
-    total = base.count()
-
-    # KPI counts
-    eo_count      = base.filter_by(english_status='EO').count()
-    el_count      = base.filter_by(english_status='EL').count()
-    ifep_count    = base.filter_by(english_status='IFEP').count()
-    rfep_count    = base.filter_by(english_status='RFEP').count()
-    homeless_count = base.filter(Student.dwelling.isnot(None), Student.dwelling != '').count()
-    tbd_count      = base.filter(db.or_(Student.ssid.is_(None), Student.ssid == '')).count()
-    frm_count     = base.filter(Student.frm_code.in_(['F', 'R'])).count()
-    swd_count     = base.filter(Student.disability.isnot(None), Student.disability != '').count()
-    foster_count  = base.filter_by(foster=True).count()
-    migrant_count = base.filter_by(migrant=True).count()
-    sed504_count  = base.filter_by(sed504=True).count()
-
-    # Ethnicity
-    _eth_map = {
-        '100': 'Native American', '200': 'Asian', '300': 'Pacific Islander',
-        '400': 'Filipino', '500': 'Hispanic/Latino', '600': 'African American',
-        '700': 'White', '900': 'Two or More Races',
-    }
-    eth_rows = agg(Student.ethnicity)
-    ethnicity_table_data = [
-        (r[0] or '', _eth_map.get(r[0], r[0] or 'Unknown'), r[1]) for r in
-        sorted(eth_rows, key=lambda x: x[1], reverse=True)
-    ]
-
-    # Gender
-    _gen_map = {'M': 'Male', 'F': 'Female', 'X': 'Non-Binary', 'U': 'Unknown'}
-    gen_rows      = agg(Student.gender)
-    gender_labels = json.dumps([_gen_map.get(r[0], r[0] or 'Unknown') for r in gen_rows])
-    gender_counts = json.dumps([r[1] for r in gen_rows])
-
-    # Grade (ordered)
-    _grade_order = ['TK', 'KN', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
-    grade_dict   = {r[0]: r[1] for r in agg(Student.grade)}
-    _g_labels    = [g for g in _grade_order if g in grade_dict]
-    grade_labels = json.dumps(_g_labels)
-    grade_counts = json.dumps([grade_dict[g] for g in _g_labels])
-
-    # Enrollment by site — respects year & date filters but ignores site filter
-    site_q = _date_filter(
-        db.session.query(Site.id, Site.site_acronyms, func.count(Student.id))
-        .join(Student, Site.id == Student.site_id)
-    )
-    if yr_filter:
-        site_q = site_q.filter(Student.schoolyr == yr_filter)
-    site_table_data = site_q.group_by(Site.id, Site.site_acronyms).order_by(Site.site_acronyms).all()
-    site_grand_total = sum(r[2] for r in site_table_data)
-
-    return render_template('dashboard/demographics.html',
-        current_page_name='Demographics',
-        snap_date_str=snap_date_str,
-        total=total, eo_count=eo_count, el_count=el_count, ifep_count=ifep_count, rfep_count=rfep_count,
-        homeless_count=homeless_count, tbd_count=tbd_count, frm_count=frm_count, swd_count=swd_count,
-        foster_count=foster_count, migrant_count=migrant_count, sed504_count=sed504_count,
-        ethnicity_table_data=ethnicity_table_data,
-        gender_labels=gender_labels, gender_counts=gender_counts,
-        grade_labels=grade_labels, grade_counts=grade_counts,
-        site_table_data=site_table_data, site_grand_total=site_grand_total,
-    )
-
-
-# =============================================================================
-# ENROLLMENT DASHBOARD
-# =============================================================================
-
-@routes_blueprint.route('/enrollment')
-@login_required
-def enrollment():
-    import json
-    from datetime import date as _date
-
-    site_filter   = session.get('active_site_filter', '')
-    yr_filter     = session.get('active_schoolyr', '')
-    status_filter = session.get('active_status_filter', 'active')
-    snap_date_str = session.get('active_snap_date', '')
-
-    snap_date = None
-    if snap_date_str:
+    # Apply status filter
+    if status_filter:
+        query = query.filter(Ticket.tck_status == status_filter)
+    
+    # Apply assigned user filter
+    if assigned_user_filter:
         try:
-            snap_date = datetime.strptime(snap_date_str, '%Y-%m-%d').date()
+            query = query.filter(Ticket.assigned_to_id == int(assigned_user_filter))
         except ValueError:
-            snap_date_str = ''
+            pass
 
-    ref_date = snap_date or _date.today()
+    # Pagination setup
+    page, per_page, offset = get_page_args(page_parameter="page", per_page_parameter="per_page")
+    total = query.count()
 
-    def _status_filter(q):
-        if status_filter == 'active':
-            return q.filter(
-                db.or_(Student.enter_date.is_(None), Student.enter_date <= ref_date),
-                db.or_(Student.exit_date.is_(None),  Student.exit_date  >= ref_date),
-            )
-        elif status_filter == 'inactive':
-            return q.filter(
-                Student.exit_date.isnot(None),
-                Student.exit_date < ref_date,
-            )
-        return q
-
-    base = _status_filter(Student.query)
-    if site_filter:
-        base = base.filter(Student.site_id == site_filter)
-    if yr_filter:
-        base = base.filter(Student.schoolyr == yr_filter)
-
-    total = base.count()
-
-    # Teacher-to-student ratio
-    teacher_q = Teacher.query.filter_by(status='Active')
-    if site_filter:
-        teacher_q = teacher_q.filter(Teacher.site_id == site_filter)
-    teacher_count = teacher_q.count()
-    teacher_ratio = f"1:{round(total / teacher_count)}" if teacher_count else '—'
-
-    # Max students per course
-    course_enrollment_q = (
-        db.session.query(Course.id, func.count(Student.id).label('cnt'))
-        .join(Course.students)
-        .filter(Course.status == 'Active')
-    )
-    if site_filter:
-        course_enrollment_q = course_enrollment_q.filter(Course.site_id == site_filter)
-    course_counts = course_enrollment_q.group_by(Course.id).all()
-    max_students_per_course = max((r.cnt for r in course_counts), default=0)
-
-    # Subgroup KPIs
-    el_count      = base.filter(Student.english_status == 'EL').count()
-    frm_count     = base.filter(Student.frm_code.in_(['F', 'R'])).count()
-    homeless_count = base.filter(Student.dwelling.isnot(None), Student.dwelling != '').count()
-    swd_count     = base.filter(Student.disability.isnot(None), Student.disability != '').count()
-    foster_count  = base.filter_by(foster=True).count()
-    migrant_count = base.filter_by(migrant=True).count()
-    sed504_count  = base.filter_by(sed504=True).count()
-
-    def pct(n):
-        return round(n / total * 100, 1) if total else 0.0
-
-    subgroup_data = [
-        ('English Learner',        el_count,      pct(el_count)),
-        ('Free / Reduced Meal',    frm_count,     pct(frm_count)),
-        ('Students w/ Disability', swd_count,     pct(swd_count)),
-        ('Homeless',               homeless_count, pct(homeless_count)),
-        ('Foster',                 foster_count,  pct(foster_count)),
-        ('Migrant',                migrant_count, pct(migrant_count)),
-        ('504 Plan',               sed504_count,  pct(sed504_count)),
+    # Sorting logic
+    order_by_clause = [
+        case(
+            # Priority 1: Open and escalated (highest priority)
+            ((Ticket.tck_status == "1-pending") & (Ticket.escalated == 1), 1),
+            # Priority 2: In progress and escalated
+            ((Ticket.tck_status == "2-progress") & (Ticket.escalated == 1), 2),
+            # Priority 3: Open and not escalated
+            ((Ticket.tck_status == "1-pending") & (Ticket.escalated == 0), 3),
+            # Priority 4: In progress and not escalated
+            ((Ticket.tck_status == "2-progress") & (Ticket.escalated == 0), 4),
+            # Default case
+            else_=5
+        ),
+        Ticket.created_at.desc()  # For tickets with same priority, sort by most recent
     ]
 
-    # Year-over-year enrollment — active students as of June 30 of each year, no session filters
-    import re as _re
-    def _yr_end(yr_str):
-        m = _re.match(r'\d{4}-(\d{4})', yr_str)
-        end_yr = int(m.group(1)) if m else _date.today().year
-        return min(_date(end_yr, 6, 30), _date.today())
+    # Apply ordering
+    tickets = query.order_by(*order_by_clause).offset(offset).limit(per_page).all()
 
-    all_yrs = sorted(set(
-        r[0] for r in db.session.query(Student.schoolyr)
-        .filter(Student.schoolyr.isnot(None), Student.schoolyr != '').all()
-    ))
-    yoy_rows = []
-    for yr in all_yrs:
-        yr_ref = _yr_end(yr)
-        cnt = (Student.query
-               .filter(Student.schoolyr == yr)
-               .filter(db.or_(Student.exit_date.is_(None), Student.exit_date >= yr_ref))
-               .count())
-        yoy_rows.append((yr, cnt))
+    # Fetch sites for the dropdown
+    if current_user_role_id in [1, 2]:
+        sites = Site.query.order_by(Site.site_name).all()
+    else:
+        sites = Site.query.filter_by(id=current_user_site_id).order_by(Site.site_name).all()
 
-    yoy_labels = json.dumps([r[0] for r in yoy_rows])
-    yoy_counts = json.dumps([r[1] for r in yoy_rows])
-
-    # Determine previous school year
-    prev_yr = None
-    yoy_change = None
-    yoy_change_pct = None
-    if len(yoy_rows) >= 2 and yr_filter:
-        yoy_dict = {r[0]: r[1] for r in yoy_rows}
-        if yr_filter in yoy_dict:
-            yrs = sorted(yoy_dict.keys())
-            idx = yrs.index(yr_filter)
-            if idx > 0:
-                prev_yr    = yrs[idx - 1]
-                prev_total = yoy_dict[prev_yr]
-                yoy_change = total - prev_total
-                yoy_change_pct = round(yoy_change / prev_total * 100, 1) if prev_total else None
-
-    # Grade breakdown
-    _grade_order = ['TK', 'KN', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
-    grade_dict = {r[0]: r[1] for r in
-                  base.with_entities(Student.grade, func.count(Student.id)).group_by(Student.grade).all()}
-
-    prev_grade_dict = {}
-    if prev_yr:
-        prev_grade_q = (db.session.query(Student.grade, func.count(Student.id))
-                        .filter(Student.schoolyr == prev_yr))
-        if site_filter:
-            prev_grade_q = prev_grade_q.filter(Student.site_id == site_filter)
-        prev_grade_dict = {r[0]: r[1] for r in prev_grade_q.group_by(Student.grade).all()}
-
-    grade_keys = [g for g in _grade_order if g in grade_dict]
-    grade_table_data = [
-        (g, grade_dict[g], grade_dict[g] - prev_grade_dict.get(g, grade_dict[g]))
-        for g in grade_keys
+    # Define status choices
+    status_choices = [
+        ('1-pending', 'Pending'),
+        ('2-progress', 'In Progress'),
+        ('3-completed', 'Completed')
     ]
 
-    # Ethnicity breakdown
-    _eth_map = {
-        '100': 'Native American', '200': 'Asian', '300': 'Pacific Islander',
-        '400': 'Filipino', '500': 'Hispanic/Latino', '600': 'African American',
-        '700': 'White', '900': 'Two or More Races',
-    }
-    eth_rows = (base.with_entities(Student.ethnicity, func.count(Student.id))
-                .group_by(Student.ethnicity).all())
-    ethnicity_table_data = sorted(
-        [(_eth_map.get(r[0], r[0] or 'Unknown'), r[1], pct(r[1])) for r in eth_rows],
-        key=lambda x: x[1], reverse=True
-    )
+    # Fetch only users with role_id 1 (admin) or 2 (specialist) for assigned user filter - tickets.html
+    assigned_users = User.query.filter(User.role_id.in_([1, 2, 3])).order_by(User.first_name).all()
 
-    # Enrollment by site — current year
-    site_base = _status_filter(
-        db.session.query(Site.site_acronyms, func.count(Student.id))
-        .join(Student, Site.id == Student.site_id)
-    )
-    if yr_filter:
-        site_base = site_base.filter(Student.schoolyr == yr_filter)
-    curr_site_rows = site_base.group_by(Site.id, Site.site_acronyms).order_by(Site.site_acronyms).all()
-
-    # Previous year enrollment by site (no status filter for historical data)
-    prev_site_dict = {}
-    if prev_yr:
-        prev_site_q = (db.session.query(Site.site_acronyms, func.count(Student.id))
-                       .join(Student, Site.id == Student.site_id)
-                       .filter(Student.schoolyr == prev_yr)
-                       .group_by(Site.id, Site.site_acronyms).all())
-        prev_site_dict = {r[0]: r[1] for r in prev_site_q}
-
-    # Build site table: (acronym, current_count, change)
-    site_table_data = [
-        (acronym, cnt, cnt - prev_site_dict.get(acronym, cnt))
-        for acronym, cnt in curr_site_rows
-    ]
-
-    return render_template('dashboard/enrollment.html',
-        current_page_name='Enrollment',
-        total=total, el_count=el_count, frm_count=frm_count,
-        teacher_ratio=teacher_ratio, max_students_per_course=max_students_per_course,
-        yoy_change=yoy_change, yoy_change_pct=yoy_change_pct,
-        subgroup_data=subgroup_data,
-        grade_table_data=grade_table_data,
-        ethnicity_table_data=ethnicity_table_data,
-        site_table_data=site_table_data,
-        yoy_labels=yoy_labels, yoy_counts=yoy_counts,
-        yr_filter=yr_filter,
-    )
-
-
-# =============================================================================
-# EARLY WARNING SYSTEM
-# =============================================================================
-
-@routes_blueprint.route('/early-warning')
-@login_required
-def early_warning():
-    schoolyr     = session.get('active_schoolyr', '') or '2025-2026'
-    site_filter  = session.get('active_site_filter', '')
-    risk_filter  = request.args.get('risk_filter',  '').strip()
-    grade_filter = request.args.get('grade_filter', '').strip()
-    today        = datetime.now().date()
-    page, per_page, _ = get_page_args(page_parameter='page', per_page_parameter='per_page')
-
-    # Base student query — active students only
-    sq = Student.query.filter(
-        db.or_(Student.enter_date.is_(None), Student.enter_date <= today),
-        db.or_(Student.exit_date.is_(None),  Student.exit_date  >= today),
-        Student.schoolyr == schoolyr,
-    )
-    if site_filter:
-        sq = sq.filter(Student.site_id == site_filter)
-    if grade_filter:
-        sq = sq.filter(Student.grade == grade_filter)
-    students = sq.all()
-
-    # Pre-aggregate absences and incidents by SSID
-    abs_counts = dict(
-        db.session.query(Absence.ssid, func.count(Absence.id))
-        .filter(Absence.school_yr == schoolyr)
-        .group_by(Absence.ssid).all()
-    )
-    inc_counts = dict(
-        db.session.query(Incident.sisid, func.count(Incident.id))
-        .filter(Incident.schoolyr == schoolyr)
-        .group_by(Incident.sisid).all()
-    )
-    # F grades by student_id
-    f_stuids = set(
-        r[0] for r in db.session.query(Grade.grades_stuid)
-        .filter(Grade.grades_courseyr == schoolyr, Grade.grades_grade == 'F')
-        .distinct().all()
-    )
-
-    # Build EWS rows
-    _ABS_THRESHOLD = 10
-    _INC_THRESHOLD = 3
-
-    ews_rows = []
-    for s in students:
-        absences  = abs_counts.get(s.ssid or '', 0)
-        incidents = inc_counts.get(s.ssid or '', 0)
-        has_f     = s.student_id in f_stuids
-
-        att_flag  = absences  >= _ABS_THRESHOLD
-        beh_flag  = incidents >= _INC_THRESHOLD
-        grd_flag  = has_f
-
-        flag_count = sum([att_flag, beh_flag, grd_flag])
-        if grd_flag or flag_count >= 2:
-            risk = 'high'
-        elif flag_count == 1:
-            risk = 'medium'
-        else:
-            risk = 'on_track'
-
-        site_obj = db.session.get(Site, s.site_id)
-        ews_rows.append({
-            'student':   s,
-            'site_name': site_obj.site_name if site_obj else '',
-            'absences':  absences,
-            'incidents': incidents,
-            'has_f':     has_f,
-            'att_flag':  att_flag,
-            'beh_flag':  beh_flag,
-            'grd_flag':  grd_flag,
-            'risk':      risk,
-        })
-
-    if risk_filter:
-        ews_rows = [r for r in ews_rows if r['risk'] == risk_filter]
-
-    ews_rows.sort(key=lambda r: (['high','medium','on_track'].index(r['risk']), r['student'].last_name))
-
-    high_count     = sum(1 for r in ews_rows if r['risk'] == 'high')
-    medium_count   = sum(1 for r in ews_rows if r['risk'] == 'medium')
-    on_track_count = sum(1 for r in ews_rows if r['risk'] == 'on_track')
-    total          = len(ews_rows)
-
-    offset     = (page - 1) * per_page
-    ews_page   = ews_rows[offset: offset + per_page]
+    # Pagination setup - tickets.html
     pagination = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
 
-    return render_template('dashboard/early_warning.html',
-        ews_rows=ews_page,
-        high_count=high_count,
-        medium_count=medium_count,
-        on_track_count=on_track_count,
-        total=total,
-        per_page=per_page,
+    return render_template(
+        'tickets.html',
+        tickets=tickets,
         pagination=pagination,
-        risk_filter=risk_filter,
-        grade_filter=grade_filter,
-        grades=_GRADE_LIST,
-        current_page_name='Early Warning System',
+        per_page=per_page,
+        total=total,
+        current_path=current_path,
+        current_page_name=current_page_name,
+        statuses=status_choices,
+        sites=sites,
+        assigned_users=assigned_users  # Pass filtered users
     )
 
 
-# =============================================================================
-# ENROLLMENT K-6 AVAILABILITY
-# =============================================================================
 
-@routes_blueprint.route('/enrollment-k6')
+
+
+
+
+# ****************** Add Ticket Page *******************************
+@routes_blueprint.route('/add_ticket', methods=['GET', 'POST'])
 @login_required
-def enrollment_k6():
-    _grade_order = ['TK', 'KN', '1', '2', '3', '4', '5', '6']
+def add_ticket():
+    # Mapping paths to page names
+    page_names = {'/add_ticket': 'New Tickets'}
+    current_path = request.path
+    current_page_name = page_names.get(current_path, 'Unknown Page')
 
-    yr_filter = session.get('active_schoolyr', '')
+    form = TicketForm()
+    titles = Title.query.order_by(Title.title_name).all()  # Get all titles sorted by name
+    tech_users = User.query.filter(User.role_id.in_([2, 3])).all()
+    form.title_id.choices = [(title.id, title.title_name) for title in titles]
+    form.assigned_to_id.choices = [(user.id, user.get_full_name()) for user in tech_users]
+    
+    if form.validate_on_submit():
+        # Ensure site_id is set based on the logged-in user's site_id
+        site_id = current_user.site_id  # Use current user's site_id directly
+        # Find a user with role_id=3 in the same site to auto-assign
+        assignee = User.query.filter_by(role_id=3, site_id=site_id).first()
+        # Create new ticket
+        ticket = Ticket(
+            title_id=form.title_id.data,
+            tck_status="1-pending",  # Ensure it's always 'Pending'
+            assigned_to_id=assignee.id if assignee else None,
+            escalated = 0,
+            user_id=current_user.id,
+            site_id=site_id,  # Assign site_id directly from current_user
+            created_at=datetime.now(timezone.utc)
+        )
+        db.session.add(ticket)
+        db.session.flush()
+        
+    # Handle file upload
+        uploaded_file = request.files.get('attachment')
+        if uploaded_file and uploaded_file.filename:
+            is_valid, error_message = validate_file_upload(uploaded_file)
+            if not is_valid:
+                flash(error_message, 'error')
+                return redirect(request.url)
 
-    # Only elementary grades (TK–6) that have at least one active course
-    all_grades = sorted(
-        set(c.grade_level for c in Course.query.filter_by(status='Active').all()
-            if c.grade_level in _grade_order),
-        key=lambda g: _grade_order.index(g)
-    )
+            file_ext = os.path.splitext(uploaded_file.filename)[1].lower()
+            # Generate a unique filename
+            new_filename = f"ticket_{ticket.id}_{datetime.now().strftime('%Y%m%d-%H%M%S')}{file_ext}"
+            filename = secure_filename(new_filename)
+            upload_folder = current_app.config['UPLOAD_ATTACHMENT']
+            os.makedirs(upload_folder, exist_ok=True)
+            filepath = os.path.join(upload_folder, filename)
 
-    grade_filter = request.args.get('grade', all_grades[0] if all_grades else '')
+            # Save the file to disk
+            uploaded_file.save(filepath)
 
-    sites = Site.query.order_by(Site.site_name).all()
+            # Verify the file was saved correctly
+            if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+                flash('Failed to save attachment (empty file)', 'error')
+                return redirect(request.url)
 
-    _sdc_keywords = ('special', 'sped', 'sdc', 'resource')
+            # Check if this attachment already exists (prevent duplicates)
+            existing_attachment = Ticket_attachment.query.filter_by(
+                ticket_id=ticket.id,
+                attach_image=filename
+            ).first()
 
-    def _inst(teacher):
-        dept = (teacher.department or '').lower()
-        return 'SDC' if any(k in dept for k in _sdc_keywords) else 'S'
+            if not existing_attachment:  # Only add if it doesn't exist
+                new_attachment = Ticket_attachment(
+                    ticket_id=ticket.id,
+                    attach_image=filename,
+                    uploaded_at=datetime.now(timezone.utc),
+                    user_id=current_user.id
+                )
+                db.session.add(new_attachment)
+            else:
+                flash('This attachment already exists.', 'warning')
 
-    site_data = []
-    summary_rows = []
-    grand_total = 0
-
-    for site in sites:
-        courses = (Course.query
-                   .filter_by(status='Active', site_id=site.id, grade_level=grade_filter)
-                   .join(Teacher, Course.teacher_id == Teacher.id)
-                   .order_by(Teacher.last_name, Course.period)
-                   .all())
-        if not courses:
-            continue
-
-        rows = []
-        site_total = 0
-        for course in courses:
-            teacher  = course.teacher
-            enrolled = len(course.students)
-            capacity = course.max_students or 0
-            rows.append({
-                'teacher':   f'{teacher.last_name}, {teacher.first_name}',
-                'inst':      _inst(teacher),
-                'grade':     course.grade_level,
-                'totals':    enrolled,
-                'capacity':  capacity,
-                'available': capacity - enrolled,
-            })
-            site_total += enrolled
-
-        site_available = sum(r['available'] for r in rows)
-        site_data.append({
-            'site_name': site.site_name,
-            'rows':      rows,
-            'total':     site_total,
-            'available': site_available,
-        })
-
-    total_available = sum(s['available'] for s in site_data)
-    total_enrolled  = sum(s['total']     for s in site_data)
-    total_capacity  = sum(
-        r['capacity'] for s in site_data for r in s['rows']
-    )
-
-    return render_template('dashboard/enrollment_k6.html',
-        current_page_name='Enrollment K-6',
-        all_grades=all_grades,
-        grade_filter=grade_filter,
-        site_data=site_data,
-        total_available=total_available,
-        total_enrolled=total_enrolled,
-        total_capacity=total_capacity,
-    )
-
-
-# =============================================================================
-# ENROLLMENT MS AVAILABILITY
-# =============================================================================
-
-@routes_blueprint.route('/enrollment-ms')
-@login_required
-def enrollment_ms():
-    _grade_order = ['7', '8']
-
-    yr_filter = session.get('active_schoolyr', '')
-
-    all_grades = sorted(
-        set(c.grade_level for c in Course.query.filter_by(status='Active').all()
-            if c.grade_level in _grade_order),
-        key=lambda g: _grade_order.index(g)
-    )
-
-    grade_filter = request.args.get('grade', all_grades[0] if all_grades else '')
-
-    sites = Site.query.order_by(Site.site_name).all()
-
-    _sdc_keywords = ('special', 'sped', 'sdc', 'resource')
-
-    def _inst(teacher):
-        dept = (teacher.department or '').lower()
-        return 'SDC' if any(k in dept for k in _sdc_keywords) else 'S'
-
-    site_data = []
-
-    for site in sites:
-        courses = (Course.query
-                   .filter_by(status='Active', site_id=site.id, grade_level=grade_filter)
-                   .join(Teacher, Course.teacher_id == Teacher.id)
-                   .order_by(Teacher.last_name, Course.period)
-                   .all())
-        if not courses:
-            continue
-
-        rows = []
-        site_total = 0
-        for course in courses:
-            teacher  = course.teacher
-            enrolled = len(course.students)
-            capacity = course.max_students or 0
-            rows.append({
-                'teacher':   f'{teacher.last_name}, {teacher.first_name}',
-                'inst':      _inst(teacher),
-                'grade':     course.grade_level,
-                'totals':    enrolled,
-                'capacity':  capacity,
-                'available': capacity - enrolled,
-            })
-            site_total += enrolled
-
-        site_available = sum(r['available'] for r in rows)
-        site_data.append({
-            'site_name': site.site_name,
-            'rows':      rows,
-            'total':     site_total,
-            'available': site_available,
-        })
-
-    total_available = sum(s['available'] for s in site_data)
-    total_enrolled  = sum(s['total']     for s in site_data)
-    total_capacity  = sum(r['capacity'] for s in site_data for r in s['rows'])
-
-    return render_template('dashboard/enrollment_ms.html',
-        current_page_name='Enrollment MS',
-        all_grades=all_grades,
-        grade_filter=grade_filter,
-        site_data=site_data,
-        total_available=total_available,
-        total_enrolled=total_enrolled,
-        total_capacity=total_capacity,
-    )
-
-
-# =============================================================================
-# ENROLLMENT HS AVAILABILITY
-# =============================================================================
-
-@routes_blueprint.route('/enrollment-hs')
-@login_required
-def enrollment_hs():
-    _grade_order = ['9', '10', '11', '12']
-
-    yr_filter = session.get('active_schoolyr', '')
-
-    all_grades = sorted(
-        set(c.grade_level for c in Course.query.filter_by(status='Active').all()
-            if c.grade_level in _grade_order),
-        key=lambda g: _grade_order.index(g)
-    )
-
-    grade_filter = request.args.get('grade', all_grades[0] if all_grades else '')
-
-    sites = Site.query.order_by(Site.site_name).all()
-
-    _sdc_keywords = ('special', 'sped', 'sdc', 'resource')
-
-    def _inst(teacher):
-        dept = (teacher.department or '').lower()
-        return 'SDC' if any(k in dept for k in _sdc_keywords) else 'S'
-
-    site_data = []
-
-    for site in sites:
-        courses = (Course.query
-                   .filter_by(status='Active', site_id=site.id, grade_level=grade_filter)
-                   .join(Teacher, Course.teacher_id == Teacher.id)
-                   .order_by(Teacher.last_name, Course.period)
-                   .all())
-        if not courses:
-            continue
-
-        rows = []
-        site_total = 0
-        for course in courses:
-            teacher  = course.teacher
-            enrolled = len(course.students)
-            capacity = course.max_students or 0
-            rows.append({
-                'teacher':   f'{teacher.last_name}, {teacher.first_name}',
-                'inst':      _inst(teacher),
-                'grade':     course.grade_level,
-                'totals':    enrolled,
-                'capacity':  capacity,
-                'available': capacity - enrolled,
-            })
-            site_total += enrolled
-
-        site_available = sum(r['available'] for r in rows)
-        site_data.append({
-            'site_name': site.site_name,
-            'rows':      rows,
-            'total':     site_total,
-            'available': site_available,
-        })
-
-    total_available = sum(s['available'] for s in site_data)
-    total_enrolled  = sum(s['total']     for s in site_data)
-    total_capacity  = sum(r['capacity'] for s in site_data for r in s['rows'])
-
-    return render_template('dashboard/enrollment_hs.html',
-        current_page_name='Enrollment HS',
-        all_grades=all_grades,
-        grade_filter=grade_filter,
-        site_data=site_data,
-        total_available=total_available,
-        total_enrolled=total_enrolled,
-        total_capacity=total_capacity,
-    )
-
-
-# =============================================================================
-# SWD DASHBOARD
-# =============================================================================
-
-@routes_blueprint.route('/swd')
-@login_required
-def swd_dashboard():
-    import json
-
-    site_filter   = session.get('active_site_filter', '')
-    yr_filter     = session.get('active_schoolyr', '')
-    status_filter = session.get('active_status_filter', 'active')
-    snap_date_str = session.get('active_snap_date', '')
-
-    snap_date = None
-    if snap_date_str:
-        try:
-            snap_date = datetime.strptime(snap_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            snap_date_str = ''
-
-    ref_date = snap_date or datetime.now().date()
-
-    def _date_filter(q):
-        if status_filter == 'active':
-            return q.filter(
-                db.or_(Student.enter_date.is_(None), Student.enter_date <= ref_date),
-                db.or_(Student.exit_date.is_(None),  Student.exit_date  >= ref_date),
+        # Add initial comment (if any)
+        initial_comment = request.form.get('initial_comment')
+        if initial_comment:
+            new_content = Ticket_content(
+                ticket_id=ticket.id,
+                content=initial_comment,
+                cnt_created_at=datetime.now(timezone.utc),
+                user_id=current_user.id
             )
-        elif status_filter == 'inactive':
-            return q.filter(Student.exit_date.isnot(None), Student.exit_date < ref_date)
-        return q
+            db.session.add(new_content)
 
-    # Total enrollment (for % context)
-    enrollment_base = _date_filter(Student.query)
-    if site_filter:
-        enrollment_base = enrollment_base.filter(Student.site_id == site_filter)
-    if yr_filter:
-        enrollment_base = enrollment_base.filter(Student.schoolyr == yr_filter)
-    total_enrollment = enrollment_base.count()
-
-    # SWD base — all above filters + must have a disability code
-    base = enrollment_base.filter(Student.disability.isnot(None), Student.disability != '')
-    total_swd = base.count()
-
-    # KPI counts — all scoped to SWD students
-    sped_exited     = base.filter(Student.sped_exdate.isnot(None)).count()
-    sed504_count    = base.filter_by(sed504=True).count()
-    el_count        = base.filter_by(english_status='EL').count()
-    homeless_count  = base.filter(Student.dwelling.isnot(None), Student.dwelling != '').count()
-    frm_count       = base.filter(Student.frm_code.in_(['F', 'R'])).count()
-    foster_count    = base.filter_by(foster=True).count()
-    migrant_count   = base.filter_by(migrant=True).count()
-
-    def agg(col):
-        q = _date_filter(db.session.query(col, func.count(Student.id)))
-        q = q.filter(Student.disability.isnot(None), Student.disability != '')
-        if site_filter:
-            q = q.filter(Student.site_id == site_filter)
-        if yr_filter:
-            q = q.filter(Student.schoolyr == yr_filter)
-        return q.group_by(col).all()
-
-    # Disability breakdown (sorted by count desc)
-    _dis_map = {
-        'AU':  'Autism',              'DB':  'Deaf-Blindness',
-        'DD':  'Developmental Delay', 'ED':  'Emotional Disturbance',
-        'HH':  'Hard of Hearing',     'ID':  'Intellectual Disability',
-        'MD':  'Multiple Disabilities','OHI': 'Other Health Impairment',
-        'OI':  'Orthopedic Impairment','SLD': 'Specific Learning Disability',
-        'SLI': 'Speech/Language',     'TBI': 'Traumatic Brain Injury',
-        'VI':  'Visual Impairment',
-    }
-    dis_rows = agg(Student.disability)
-    dis_rows_sorted = sorted(dis_rows, key=lambda x: x[1], reverse=True)
-    disability_labels = json.dumps([_dis_map.get(r[0], r[0] or 'Unknown') for r in dis_rows_sorted])
-    disability_counts = json.dumps([r[1] for r in dis_rows_sorted])
-
-    # Grade breakdown
-    _grade_order = ['TK','KN','1','2','3','4','5','6','7','8','9','10','11','12']
-    grade_dict   = {r[0]: r[1] for r in agg(Student.grade)}
-    _g_labels    = [g for g in _grade_order if g in grade_dict]
-    grade_labels = json.dumps(_g_labels)
-    grade_counts = json.dumps([grade_dict[g] for g in _g_labels])
-
-    # Gender breakdown
-    _gen_map = {'M': 'Male', 'F': 'Female', 'X': 'Non-Binary', 'U': 'Unknown'}
-    gen_rows      = agg(Student.gender)
-    gender_labels = json.dumps([_gen_map.get(r[0], r[0] or 'Unknown') for r in gen_rows])
-    gender_counts = json.dumps([r[1] for r in gen_rows])
-
-    # Ethnicity table
-    _eth_map = {
-        '100': 'Native American', '200': 'Asian', '300': 'Pacific Islander',
-        '400': 'Filipino', '500': 'Hispanic/Latino', '600': 'African American',
-        '700': 'White', '900': 'Two or More Races',
-    }
-    eth_rows = agg(Student.ethnicity)
-    ethnicity_table_data = [
-        (r[0] or '', _eth_map.get(r[0], r[0] or 'Unknown'), r[1]) for r in
-        sorted(eth_rows, key=lambda x: x[1], reverse=True)
-    ]
-
-    # Site table (SWD by site, ignores site filter)
-    site_q = _date_filter(
-        db.session.query(Site.id, Site.site_name, func.count(Student.id))
-        .join(Student, Site.id == Student.site_id)
-    ).filter(Student.disability.isnot(None), Student.disability != '')
-    if yr_filter:
-        site_q = site_q.filter(Student.schoolyr == yr_filter)
-    site_table_data  = site_q.group_by(Site.id, Site.site_name).order_by(Site.site_name).all()
-    site_grand_total = sum(r[2] for r in site_table_data)
-
-    return render_template('dashboard/swd.html',
-        current_page_name='SWD',
-        snap_date_str=snap_date_str,
-        total=total_swd, total_swd=total_swd, total_enrollment=total_enrollment,
-        sped_exited=sped_exited, sed504_count=sed504_count, el_count=el_count,
-        homeless_count=homeless_count, frm_count=frm_count,
-        foster_count=foster_count, migrant_count=migrant_count,
-        disability_labels=disability_labels, disability_counts=disability_counts,
-        grade_labels=grade_labels, grade_counts=grade_counts,
-        gender_labels=gender_labels, gender_counts=gender_counts,
-        ethnicity_table_data=ethnicity_table_data,
-        site_table_data=site_table_data, site_grand_total=site_grand_total,
-    )
-
-
-# =============================================================================
-# ABSENTEEISM DASHBOARD
-# =============================================================================
-
-@routes_blueprint.route('/absenteeism')
-@login_required
-def absenteeism():
-    import json, calendar
-
-    site_filter   = session.get('active_site_filter', '')
-    yr_filter     = session.get('active_schoolyr', '')
-    snap_date_str = session.get('active_snap_date', '')
-
-    snap_date = None
-    if snap_date_str:
-        try:
-            snap_date = datetime.strptime(snap_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            snap_date_str = ''
-
-    def base_q():
-        q = Absence.query.filter(Absence.abs_date.isnot(None))
-        if site_filter:
-            q = q.filter(Absence.site_id == site_filter)
-        if yr_filter:
-            q = q.filter(Absence.school_yr == yr_filter)
-        if snap_date:
-            q = q.filter(Absence.abs_date <= snap_date)
-        return q
-
-    total_absences = base_q().count()
-
-    # Enrolled students for Absenteeism rate
-    from datetime import date as _date
-    today = _date.today()
-    student_base = Student.query
-    status_filter = session.get('active_status_filter', 'active')
-    if status_filter == 'active':
-        student_base = student_base.filter(
-            db.or_(Student.enter_date.is_(None), Student.enter_date <= today),
-            db.or_(Student.exit_date.is_(None),  Student.exit_date  >= today),
-        )
-    if site_filter:
-        student_base = student_base.filter(Student.site_id == site_filter)
-    if yr_filter:
-        student_base = student_base.filter(Student.schoolyr == yr_filter)
-    total_students = student_base.count()
-    avg_absences_per_student = round(total_absences / total_students, 1) if total_students else 0.0
-
-    # School days elapsed (approx: weekdays since Aug 25 of the start year)
-    if yr_filter and '-' in yr_filter:
-        start_year = int(yr_filter.split('-')[0])
-    else:
-        start_year = today.year if today.month >= 8 else today.year - 1
-    school_start = _date(start_year, 8, 25)
-    ref_end      = today if today <= _date(start_year + 1, 6, 10) else _date(start_year + 1, 6, 10)
-    from datetime import timedelta
-    school_days  = sum(1 for i in range((ref_end - school_start).days + 1)
-                       if (school_start + timedelta(i)).weekday() < 5)
-    school_days  = max(school_days, 1)
-
-    total_possible  = total_students * school_days
-    absence_rate    = round(total_absences / total_possible * 100, 1) if total_possible else 0.0
-
-    # Chronic absenteeism — per student (ssid), count absences vs school_days
-    ssid_rows = (base_q()
-                 .with_entities(Absence.ssid, func.count(Absence.id).label('cnt'))
-                 .group_by(Absence.ssid).all())
-    threshold       = school_days * 0.10
-    borderline_lo   = school_days * 0.07
-    borderline_hi   = school_days * 0.09
-    chronic_hi      = school_days * 0.25
-
-    borderline_count = sum(1 for r in ssid_rows if borderline_lo <= r.cnt <= borderline_hi)
-    chronic_count    = sum(1 for r in ssid_rows if threshold     <= r.cnt < chronic_hi)
-    severe_count     = sum(1 for r in ssid_rows if r.cnt         >= chronic_hi)
-    chronic_students = chronic_count + severe_count
-    chronic_pct      = round(chronic_students / total_students * 100, 1) if total_students else 0.0
-
-    # Fetch all absences in one pass; group in Python to avoid SQL dialect issues
-    all_abs = (base_q()
-               .with_entities(Absence.abs_date, Absence.grade,
-                               Absence.abs_abbr, Absence.ssid, Absence.site_id)
-               .all())
-
-    # Absences per month
-    from collections import defaultdict
-    month_dict = defaultdict(int)
-    for a in all_abs:
-        if a.abs_date:
-            month_dict[a.abs_date.month] += 1
-    _month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    month_labels = json.dumps([_month_names[m-1] for m in sorted(month_dict)])
-    month_counts = json.dumps([month_dict[m] for m in sorted(month_dict)])
-
-    # Absences per grade
-    grade_dict = defaultdict(int)
-    for a in all_abs:
-        grade_dict[a.grade or 'N/A'] += 1
-    _grade_order = ['TK','KN','1','2','3','4','5','6','7','8','9','10','11','12','N/A']
-    grade_sorted = sorted(grade_dict.items(), key=lambda x: _grade_order.index(x[0]) if x[0] in _grade_order else len(_grade_order))
-    grade_labels = json.dumps([g for g, _ in grade_sorted])
-    grade_counts = json.dumps([c for _, c in grade_sorted])
-    grade_pcts   = json.dumps([round(c / total_absences * 100, 1) if total_absences else 0
-                                for _, c in grade_sorted])
-
-    # Absences per ethnicity (join in Python via ssid → Student lookup)
-    _eth_map = {'100':'Native American','200':'Asian','300':'Pacific Islander',
-                '400':'Filipino','500':'Hispanic/Latino','600':'African American',
-                '700':'White','900':'Two or More Races'}
-    ssid_eth = {s.ssid: s.ethnicity for s in
-                Student.query.with_entities(Student.ssid, Student.ethnicity)
-                .filter(Student.ssid.isnot(None)).all()}
-    eth_dict = defaultdict(int)
-    for a in all_abs:
-        eth = ssid_eth.get(a.ssid, None)
-        eth_dict[_eth_map.get(eth, 'Unknown')] += 1
-    ethnicity_data = sorted(
-        [(label, cnt, round(cnt / total_absences * 100, 1) if total_absences else 0)
-         for label, cnt in eth_dict.items()],
-        key=lambda x: x[1], reverse=True
-    )
-
-    # Most absences in a day — direct SQL GROUP BY so filters are always applied
-    top_days = (base_q()
-                .with_entities(Absence.abs_date, func.count(Absence.id).label('cnt'))
-                .group_by(Absence.abs_date)
-                .order_by(func.count(Absence.id).desc())
-                .limit(10)
-                .all())
-
-    # Totals by site
-    _excused_set   = {'EA', 'ET', 'MED'}
-    _unexcused_set = {'UA', 'UT', 'ISS', 'SS'}
-    site_excused   = defaultdict(int)
-    site_unexcused = defaultdict(int)
-    site_total_abs = defaultdict(int)
-    for a in all_abs:
-        site_total_abs[a.site_id] += 1
-        if a.abs_abbr in _excused_set:
-            site_excused[a.site_id] += 1
-        elif a.abs_abbr in _unexcused_set:
-            site_unexcused[a.site_id] += 1
-    sites_all = Site.query.order_by(Site.site_name).all()
-    site_table = []
-    for s in sites_all:
-        if s.id not in site_total_abs:
-            continue
-        sp  = max(student_base.filter(Student.site_id == s.id).count() * school_days, 1)
-        att = round(site_total_abs[s.id] / sp * 100, 1)
-        site_table.append((s.site_acronyms, site_excused[s.id], site_unexcused[s.id], att))
-
-    # Absences by day of week
-    _dow_names = {0:'Monday',1:'Tuesday',2:'Wednesday',3:'Thursday',4:'Friday',5:'Saturday',6:'Sunday'}
-    dow_dict   = defaultdict(int)
-    for a in all_abs:
-        if a.abs_date:
-            dow_dict[a.abs_date.weekday()] += 1  # 0=Mon, 6=Sun
-    weekday_keys = sorted(k for k in dow_dict if k < 5)  # Mon–Fri only
-    dow_labels  = json.dumps([_dow_names[k] for k in weekday_keys])
-    dow_counts  = json.dumps([dow_dict[k] for k in weekday_keys])
-
-    return render_template('dashboard/absenteeism.html',
-        current_page_name='Absenteeism',
-        total_absences=total_absences, total_students=total_students,
-        avg_absences_per_student=avg_absences_per_student,
-        absence_rate=absence_rate, chronic_pct=chronic_pct,
-        borderline_count=borderline_count, chronic_count=chronic_count, severe_count=severe_count,
-        month_labels=month_labels, month_counts=month_counts,
-        grade_labels=grade_labels, grade_counts=grade_counts, grade_pcts=grade_pcts,
-        ethnicity_data=ethnicity_data,
-        top_days=top_days,
-        site_table=site_table,
-        dow_labels=dow_labels, dow_counts=dow_counts,
-    )
-
-
-@routes_blueprint.route('/attendance-rates')
-@login_required
-def attendance_rates():
-    from collections import defaultdict
-    from datetime import timedelta, date as _date
-
-    yr_filter   = session.get('active_schoolyr', '')
-    site_filter = session.get('active_site_filter', '')
-    today       = _date.today()
-
-    # School days elapsed
-    if yr_filter and '-' in yr_filter:
-        start_year = int(yr_filter.split('-')[0])
-    else:
-        start_year = today.year if today.month >= 8 else today.year - 1
-    school_start = _date(start_year, 8, 25)
-    ref_end      = today if today <= _date(start_year + 1, 6, 10) else _date(start_year + 1, 6, 10)
-    school_days  = max(sum(1 for i in range((ref_end - school_start).days + 1)
-                           if (school_start + timedelta(i)).weekday() < 5), 1)
-
-    # Absence counts per SSID
-    abs_q = Absence.query
-    if yr_filter:
-        abs_q = abs_q.filter(Absence.school_yr == yr_filter)
-    if site_filter:
-        site_obj = Site.query.get(site_filter)
-        if site_obj:
-            abs_q = abs_q.filter(Absence.site_id == site_obj.id)
-    ssid_abs = defaultdict(int)
-    for a in abs_q.with_entities(Absence.ssid, func.count(Absence.id)).group_by(Absence.ssid).all():
-        if a[0]:
-            ssid_abs[a[0]] = a[1]
-
-    # Build per-course data
-    _grade_order = ['TK', 'KN', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
-    courses_q = Course.query.filter_by(status='Active')
-    if site_filter:
-        courses_q = courses_q.filter(Course.site_id == site_filter)
-
-    grades_data = defaultdict(list)
-    for course in courses_q.order_by(Course.grade_level, Course.course_name).all():
-        grade       = course.grade_level or 'N/A'
-        enrolled    = [s for s in course.students]
-        n_enrolled  = len(enrolled)
-        absences    = sum(ssid_abs.get(s.ssid, 0) for s in enrolled if s.ssid)
-        possible    = n_enrolled * school_days
-        att_pct     = round((possible - absences) / possible * 100, 1) if possible else 100.0
-        grades_data[grade].append({
-            'teacher':     f'{course.teacher.last_name}, {course.teacher.first_name}',
-            'teacher_id':  course.teacher.id,
-            'course_name': course.course_name,
-            'course_code': course.course_code,
-            'course_id':   course.id,
-            'enrolled':    n_enrolled,
-            'absences':    absences,
-            'att_pct':     att_pct,
-        })
-
-    sorted_grades = sorted(grades_data.keys(),
-                           key=lambda g: _grade_order.index(g) if g in _grade_order else 99)
-
-    # KPI summary
-    all_rows       = [r for rows in grades_data.values() for r in rows]
-    enrolled_q = Student.query.filter(
-        db.or_(Student.enter_date.is_(None), Student.enter_date <= today),
-        db.or_(Student.exit_date.is_(None),  Student.exit_date  >= today),
-    )
-    if yr_filter:
-        enrolled_q = enrolled_q.filter(Student.schoolyr == yr_filter)
-    if site_filter:
-        enrolled_q = enrolled_q.filter(Student.site_id == site_filter)
-    total_enrolled = enrolled_q.count()
-    total_absences = sum(r['absences'] for r in all_rows)
-    possible_all   = total_enrolled * school_days
-    overall_att    = round((possible_all - total_absences) / possible_all * 100, 1) if possible_all else 100.0
-    # Best / worst grade
-    grade_avgs  = {g: round(sum(r['att_pct'] for r in rows) / len(rows), 1)
-                   for g, rows in grades_data.items() if rows}
-    best_grade  = max(grade_avgs, key=grade_avgs.get) if grade_avgs else '—'
-    worst_grade = min(grade_avgs, key=grade_avgs.get) if grade_avgs else '—'
-
-    # Best course
-    best_course = max(all_rows, key=lambda r: r['att_pct']) if all_rows else None
-
-    return render_template('dashboard/attendance_rates.html',
-        current_page_name='Attendance Rates',
-        overall_att=overall_att, total_enrolled=total_enrolled,
-        best_course=best_course,
-        best_grade=best_grade, best_grade_att=grade_avgs.get(best_grade, 0),
-        worst_grade=worst_grade, worst_grade_att=grade_avgs.get(worst_grade, 0),
-        grades_data=grades_data, sorted_grades=sorted_grades,
-        school_days=school_days,
-    )
-
-
-@routes_blueprint.route('/absences', methods=['GET'])
-@login_required
-def absences():
-    page, per_page, offset = get_page_args(page_parameter='page', per_page_parameter='per_page')
-    search         = request.args.get('search', '').strip()
-    grade_filter   = request.args.get('grade_filter', '').strip()
-    abs_types      = request.args.getlist('abs_type')
-    subgroups      = [s.strip() for s in request.args.getlist('subgroup') if s.strip()]
-    english_status = [s.strip() for s in request.args.getlist('english_status') if s.strip()]
-    gender_filters = [s.strip() for s in request.args.getlist('gender') if s.strip()]
-    site_filter    = session.get('active_site_filter', '')
-    yr_filter      = session.get('active_schoolyr', '')
-
-    query = Absence.query
-    if site_filter:
-        query = query.filter(Absence.site_id == site_filter)
-    if yr_filter:
-        query = query.filter(Absence.school_yr == yr_filter)
-    if grade_filter:
-        query = query.filter(Absence.grade == grade_filter)
-    if abs_types:
-        query = query.filter(Absence.abs_abbr.in_(abs_types))
-    if search:
-        name_ssids = db.session.query(Student.ssid).filter(
-            db.or_(
-                Student.first_name.ilike(f'%{search}%'),
-                Student.last_name.ilike(f'%{search}%'),
-            ),
-            Student.ssid.isnot(None), Student.ssid != ''
-        ).subquery()
-        query = query.filter(
-            db.or_(
-                Absence.ssid.ilike(f'%{search}%'),
-                Absence.abs_desc.ilike(f'%{search}%'),
-                Absence.abs_abbr.ilike(f'%{search}%'),
-                Absence.ssid.in_(name_ssids),
-            )
+        # Commit all changes at once
+        db.session.commit()
+        send_ticket_notification('created', ticket, initial_comment=initial_comment or '')
+        flash('Ticket created successfully!', 'success')
+        return redirect(url_for('routes.tickets'))
+    
+    return render_template('add_ticket.html', form=form, titles=titles, 
+        current_path=current_path,
+        current_page_name=current_page_name
         )
 
-    # Demographic filters — resolve matching SSIDs via Student table
-    if subgroups or english_status or gender_filters:
-        stu_q = Student.query.with_entities(Student.ssid).filter(Student.ssid.isnot(None), Student.ssid != '')
-        if english_status:
-            stu_q = stu_q.filter(Student.english_status.in_(english_status))
-        if gender_filters:
-            stu_q = stu_q.filter(Student.gender.in_(gender_filters))
-        if subgroups:
-            _sg = {
-                'homeless': db.and_(Student.dwelling.isnot(None), Student.dwelling != ''),
-                'frm':      Student.frm_code.in_(['F', 'R']),
-                'swd':      db.and_(Student.disability.isnot(None), Student.disability != ''),
-                'foster':   Student.foster == True,
-                'migrant':  Student.migrant == True,
-                'sed504':   Student.sed504 == True,
-            }
-            conds = [_sg[sg] for sg in subgroups if sg in _sg]
-            if conds:
-                stu_q = stu_q.filter(db.and_(*conds))
-        matching_ssids = [r[0] for r in stu_q.all()]
-        query = query.filter(Absence.ssid.in_(matching_ssids))
-
-    total      = query.count()
-    absences_q = query.order_by(Absence.school_yr.desc(), Absence.site_id.asc()).offset(offset).limit(per_page).all()
-    pagination = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
-    grades     = _GRADE_LIST
-
-    # Build ssid → full name and ssid → student.id lookups for the current page
-    page_ssids = {a.ssid for a in absences_q if a.ssid}
-    if page_ssids:
-        stu_rows = (Student.query
-                           .with_entities(Student.ssid, Student.id, Student.first_name, Student.last_name)
-                           .filter(Student.ssid.in_(page_ssids)).all())
-        ssid_names = {s.ssid: f"{s.last_name}, {s.first_name}" for s in stu_rows}
-        ssid_ids   = {s.ssid: s.id for s in stu_rows}
-    else:
-        ssid_names = {}
-        ssid_ids   = {}
-
-    return render_template('absences.html',
-        absences=absences_q, pagination=pagination, per_page=per_page,
-        total=total, grades=grades,
-        grade_filter=grade_filter, abs_types=abs_types,
-        subgroups=subgroups, english_status=english_status, gender_filters=gender_filters,
-        ssid_names=ssid_names, ssid_ids=ssid_ids,
-        current_page_name='Absences')
 
 
-# =============================================================================
-# DISCIPLINE DASHBOARD
-# =============================================================================
 
-@routes_blueprint.route('/discipline')
+@routes_blueprint.route('/download_attachment/<int:attachment_id>')
 @login_required
-def discipline_dashboard():
-    import json
-    from collections import defaultdict
+def download_attachment(attachment_id):
+    attachment = Ticket_attachment.query.get_or_404(attachment_id)
+    ticket = Ticket.query.get_or_404(attachment.ticket_id)
 
-    yr_filter   = session.get('active_schoolyr', '')
-    site_filter = session.get('active_site_filter', '')
+    # Only allow: admins/tech roles, the ticket creator, or the assigned user
+    if (current_user.role_id not in [1, 2, 3]
+            and current_user.id != ticket.user_id
+            and current_user.id != ticket.assigned_to_id):
+        abort(403)
 
-    base = Incident.query
-    if yr_filter:
-        base = base.filter(Incident.schoolyr == yr_filter)
-    if site_filter:
-        site_obj = Site.query.get(site_filter)
-        if site_obj:
-            base = base.filter(Incident.site == site_obj.site_acronyms)
+    filename = attachment.attach_image.split('/')[-1]
+    upload_folder = current_app.config['UPLOAD_ATTACHMENT']
 
-    all_inc = base.all()
+    file_path = os.path.join(upload_folder, filename)
+    if not os.path.exists(file_path):
+        current_app.logger.error(f"Attachment not found at: {file_path}")
+        flash('File not found.', 'error')
+        return redirect(url_for('routes.tickets'))
 
-    total_incidents = len(all_inc)
-    major_count     = sum(1 for i in all_inc if i.major)
-    minor_count     = sum(1 for i in all_inc if i.minor)
-    total_susp_days = sum(i.suspended_days or 0 for i in all_inc)
-
-    # Student lookup: ssid → (gender, grade)
-    students_all = Student.query.with_entities(Student.ssid, Student.gender, Student.grade).filter(Student.ssid.isnot(None)).all()
-    ssid_gender  = {s.ssid: s.gender for s in students_all}
-    ssid_grade   = {s.ssid: s.grade  for s in students_all}
-
-    # Incident rate per 100 enrolled students
-    enrolled_q = Student.query.filter(
-        db.or_(Student.enter_date.is_(None), Student.enter_date <= datetime.now().date()),
-        db.or_(Student.exit_date.is_(None),  Student.exit_date  >= datetime.now().date()),
-    )
-    if site_filter:
-        enrolled_q = enrolled_q.filter(Student.site_id == site_filter)
-    total_enrolled  = enrolled_q.count() or 1
-    incident_rate   = round(total_incidents / total_enrolled * 100, 1)
-
-    # By month
-    month_dict = defaultdict(int)
-    _mon_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    for i in all_inc:
-        if i.incident_date:
-            month_dict[i.incident_date.month] += 1
-    month_labels = json.dumps([_mon_names[m-1] for m in sorted(month_dict)])
-    month_counts = json.dumps([month_dict[m] for m in sorted(month_dict)])
-
-    # By site (bar chart)
-    site_dict  = defaultdict(int)
-    for i in all_inc:
-        site_dict[i.site or 'Unknown'] += 1
-    site_items  = sorted(site_dict.items(), key=lambda x: x[1], reverse=True)
-    site_labels = json.dumps([s for s, _ in site_items])
-    site_counts = json.dumps([c for _, c in site_items])
-
-    # Top infractions
-    infraction_dict = defaultdict(int)
-    for i in all_inc:
-        label = i.major or i.minor
-        if label:
-            infraction_dict[label] += 1
-    top_infractions   = sorted(infraction_dict.items(), key=lambda x: x[1], reverse=True)[:8]
-    infraction_labels = json.dumps([k for k, _ in top_infractions])
-    infraction_counts = json.dumps([v for _, v in top_infractions])
-
-    # By day of week
-    dow_order = ['Monday','Tuesday','Wednesday','Thursday','Friday']
-    dow_dict  = defaultdict(int)
-    for i in all_inc:
-        if i.day_of_week and i.day_of_week in dow_order:
-            dow_dict[i.day_of_week] += 1
-    dow_labels = json.dumps(dow_order)
-    dow_counts = json.dumps([dow_dict[d] for d in dow_order])
-
-    # By gender
-    _gen_map   = {'M': 'Male', 'F': 'Female', 'X': 'Non-Binary', 'U': 'Unknown'}
-    gender_dict = defaultdict(int)
-    for i in all_inc:
-        g = ssid_gender.get(i.sisid, 'Unknown') if i.sisid else 'Unknown'
-        gender_dict[_gen_map.get(g, 'Unknown')] += 1
-    gender_labels = json.dumps(list(gender_dict.keys()))
-    gender_counts = json.dumps(list(gender_dict.values()))
-
-    # By grade
-    _grade_order = ['TK','KN','1','2','3','4','5','6','7','8','9','10','11','12']
-    grade_dict   = defaultdict(int)
-    for i in all_inc:
-        gr = ssid_grade.get(i.sisid, 'N/A') if i.sisid else 'N/A'
-        grade_dict[gr] += 1
-    grade_sorted  = sorted(grade_dict.items(), key=lambda x: _grade_order.index(x[0]) if x[0] in _grade_order else 99)
-    grade_labels  = json.dumps([g for g, _ in grade_sorted])
-    grade_counts  = json.dumps([c for _, c in grade_sorted])
-
-    # Site table
-    site_table = defaultdict(lambda: {'major': 0, 'minor': 0, 'susp': 0.0})
-    for i in all_inc:
-        s = i.site or 'Unknown'
-        if i.major:   site_table[s]['major'] += 1
-        elif i.minor: site_table[s]['minor'] += 1
-        site_table[s]['susp'] += i.suspended_days or 0
-    site_table_data = sorted(site_table.items(), key=lambda x: x[1]['major'] + x[1]['minor'], reverse=True)
-
-    return render_template('dashboard/discipline.html',
-        current_page_name='Discipline',
-        total_incidents=total_incidents, major_count=major_count,
-        minor_count=minor_count, total_susp_days=total_susp_days,
-        incident_rate=incident_rate,
-        month_labels=month_labels, month_counts=month_counts,
-        site_labels=site_labels, site_counts=site_counts,
-        infraction_labels=infraction_labels, infraction_counts=infraction_counts,
-        dow_labels=dow_labels, dow_counts=dow_counts,
-        gender_labels=gender_labels, gender_counts=gender_counts,
-        grade_labels=grade_labels, grade_counts=grade_counts,
-        site_table_data=site_table_data,
-    )
+    return send_from_directory(upload_folder, filename, as_attachment=True)
 
 
-# =============================================================================
-# INCIDENTS
-# =============================================================================
-
-@routes_blueprint.route('/incidents', methods=['GET'])
+# ****************** Delete attachment Page *******************************
+@routes_blueprint.route('/delete_attachment/<int:attachment_id>', methods=['POST'])
 @login_required
-def incidents():
-    page, per_page, offset = get_page_args(page_parameter='page', per_page_parameter='per_page')
-    search      = request.args.get('search', '').strip()
-    site_filter = request.args.get('site_filter', '').strip()
-    type_filter = request.args.get('type_filter', '').strip()
-    yr_filter   = request.args.get('schoolyr', '').strip() or session.get('active_schoolyr', '')
+def delete_attachment(attachment_id):
+    current_app.logger.info(f"Delete attachment request - Attachment ID: {attachment_id}, User: {current_user.id}")
+    
+    # Find attachment
+    attachment = db.session.get(Ticket_attachment, attachment_id)
+    if not attachment:
+        flash('Attachment not found.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    # Get ticket id for redirect
+    ticket_id = attachment.ticket_id
+    
+    # Check permissions (admin, ticket owner, attachment uploader, or assigned user)
+    ticket = db.session.get(Ticket, ticket_id)
+    if not (current_user.role_id in [1, 2, 3] or 
+            current_user.id == ticket.user_id or
+            current_user.id == attachment.user_id or
+            current_user.id == ticket.assigned_to_id):
+        flash('You do not have permission to delete this attachment.', 'danger')
+        return redirect(url_for('routes.edit_ticket', ticket_id=ticket_id))
+    
+    try:
+        # Get filename for file deletion
+        if '/' in attachment.attach_image:
+            filename = attachment.attach_image.split('/')[-1]
+        else:
+            filename = attachment.attach_image
+        
+        # Get filepath
+        file_path = os.path.join(current_app.config['UPLOAD_ATTACHMENT'], filename)
+        current_app.logger.debug(f"Attempting to delete file: {file_path}")
+        
+        # Delete physical file if it exists
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            current_app.logger.info(f"File deleted successfully: {file_path}")
+        
+        # Delete database record
+        db.session.delete(attachment)
+        ticket.updated_at = datetime.now(timezone.utc)  # Update ticket timestamp
+        db.session.commit()
+        current_app.logger.info(f"Attachment {attachment_id} deleted from database")
+        
+        flash('Attachment deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting attachment {attachment_id}: {str(e)}")
+        flash('Error deleting attachment.', 'danger')
+    
+    return redirect(url_for('routes.edit_ticket', ticket_id=ticket_id))
 
-    query = Incident.query
-    if search:
-        query = query.filter(db.or_(
-            Incident.sisid.ilike(f'%{search}%'),
-            Incident.incident_id.ilike(f'%{search}%'),
-            Incident.major.ilike(f'%{search}%'),
-            Incident.minor.ilike(f'%{search}%'),
-        ))
-    if site_filter:
-        query = query.filter(Incident.site == site_filter)
-    if type_filter == 'major':
-        query = query.filter(Incident.major.isnot(None), Incident.major != '')
-    elif type_filter == 'minor':
-        query = query.filter(Incident.minor.isnot(None), Incident.minor != '')
-    if yr_filter:
-        query = query.filter(Incident.schoolyr == yr_filter)
-
-    total       = query.count()
-    incidents_q = query.order_by(Incident.incident_date.desc()).offset(offset).limit(per_page).all()
-    pagination  = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
-    sites       = sorted({i.site for i in Incident.query.with_entities(Incident.site).distinct() if i.site})
-    ssid_to_id  = {s.ssid: s.id for s in Student.query.with_entities(Student.ssid, Student.id).filter(Student.ssid.isnot(None)).all()}
-
-    return render_template('incidents.html',
-        incidents=incidents_q, pagination=pagination, per_page=per_page,
-        total=total, sites=sites, site_filter=site_filter,
-        type_filter=type_filter, yr_filter=yr_filter,
-        ssid_to_id=ssid_to_id,
-        current_page_name='Incidents')
 
 
-# =============================================================================
-# TEACHERS
-# =============================================================================
 
-@routes_blueprint.route('/teachers', methods=['GET'])
+# ****************** edit Ticket Page *******************************
+@routes_blueprint.route('/edit_ticket/<int:ticket_id>', methods=['GET', 'POST'])
 @login_required
-def teachers():
-    page, per_page, offset = get_page_args(page_parameter='page', per_page_parameter='per_page')
-    search      = request.args.get('search', '').strip()
-    site_filter = request.args.get('site_filter', '').strip()
-    dept_filter = request.args.get('dept_filter', '').strip()
+def edit_ticket(ticket_id):
+    current_path = request.path
+    current_page_name = 'Manage Ticket'
 
-    query = Teacher.query
-    if search:
-        query = query.filter(
-            db.or_(Teacher.first_name.ilike(f'%{search}%'),
-                   Teacher.last_name.ilike(f'%{search}%'),
-                   Teacher.employee_id.ilike(f'%{search}%'))
-        )
-    if site_filter:
-        query = query.filter(Teacher.site_id == site_filter)
-    if dept_filter:
-        query = query.filter(Teacher.department == dept_filter)
+    ticket = Ticket.query.options(db.joinedload(Ticket.contents)).get_or_404(ticket_id)
 
-    total      = query.count()
-    teachers_q = query.order_by(Teacher.last_name.asc(), Teacher.first_name.asc()).offset(offset).limit(per_page).all()
-    pagination = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
-    sites      = Site.query.order_by(Site.site_name.asc()).all()
-    departments = sorted({t.department for t in Teacher.query.all() if t.department})
+    # Permission check
+    if current_user.role_id not in [1, 2, 3] and current_user.id != ticket.user_id:
+        flash('You do not have permission to edit this ticket.', 'danger')
+        return redirect(url_for('routes.tickets'))
 
-    return render_template('teachers.html',
-        teachers=teachers_q, pagination=pagination, per_page=per_page,
-        sites=sites, departments=departments, dept_filter=dept_filter,
-        current_page_name='Teachers')
-
-
-@routes_blueprint.route('/add_teacher', methods=['GET', 'POST'])
-@login_required
-def add_teacher():
-    return redirect(url_for('routes.teachers'))
-
-
-@routes_blueprint.route('/teacher/<int:teacher_id>', methods=['GET'])
-@login_required
-def teacher_details(teacher_id):
-    teacher = Teacher.query.get_or_404(teacher_id)
-    # Flat, deduplicated list of students across all teacher's courses
-    seen = set()
-    teacher_students = []
-    for course in teacher.courses:
-        for student in course.students:
-            if student.id not in seen:
-                seen.add(student.id)
-                teacher_students.append((student, course))
-    teacher_students.sort(key=lambda x: (x[0].last_name, x[0].first_name))
-    return render_template('teacher_details.html', teacher=teacher,
-                           teacher_students=teacher_students,
-                           current_page_name=f'{teacher.first_name} {teacher.last_name}')
-
-
-@routes_blueprint.route('/edit_teacher/<int:teacher_id>', methods=['GET', 'POST'])
-@login_required
-def edit_teacher(teacher_id):
-    is_admin()
-    teacher = Teacher.query.get_or_404(teacher_id)
-    form = TeacherForm(obj=teacher)
-    form.site_id.choices = [(s.id, s.site_name) for s in Site.query.order_by(Site.site_name).all()]
+    form = TicketForm(obj=ticket)
+    titles = Title.query.all()
+    tech_users = User.query.filter(User.role_id.in_([2, 3])).all()
+    form.title_id.choices = [(title.id, title.title_name) for title in titles]
+    form.assigned_to_id.choices = [(user.id, user.get_full_name()) for user in tech_users]
+    form.escalate.data = ticket.escalated
 
     if form.validate_on_submit():
-        conflict = Teacher.query.filter(
-            Teacher.employee_id == form.employee_id.data.strip(),
-            Teacher.id != teacher.id
-        ).first()
-        if conflict:
-            flash('A teacher with this Employee ID already exists.', 'danger')
-            return render_template('add_teacher.html', form=form, current_page_name='Edit Teacher')
-        teacher.first_name  = form.first_name.data
-        teacher.middle_name = form.middle_name.data or None
-        teacher.last_name   = form.last_name.data
-        teacher.employee_id = form.employee_id.data.strip()
-        teacher.email       = form.email.data or None
-        teacher.department  = form.department.data or None
-        teacher.site_id     = form.site_id.data
-        teacher.status      = form.status.data
-        db.session.commit()
-        flash('Teacher updated successfully!', 'success')
-        return redirect(url_for('routes.teacher_details', teacher_id=teacher.id))
+        changes_made = False
 
-    return render_template('add_teacher.html', form=form, current_page_name='Edit Teacher')
+        # Capture old values before any changes for email notifications
+        old_status = ticket.tck_status
+        old_assigned_to_id = ticket.assigned_to_id
+        old_escalated = bool(ticket.escalated)
 
+        # Check for changes in ticket fields
+        if ticket.title_id != form.title_id.data:
+            ticket.title_id = form.title_id.data
+            changes_made = True
+        if ticket.tck_status != form.tck_status.data:
+            ticket.tck_status = form.tck_status.data
+            changes_made = True
+        if ticket.assigned_to_id != form.assigned_to_id.data:
+            ticket.assigned_to_id = form.assigned_to_id.data
+            changes_made = True
 
-@routes_blueprint.route('/delete_teacher/<int:teacher_id>', methods=['POST'])
-@login_required
-def delete_teacher(teacher_id):
-    is_admin()
-    teacher = Teacher.query.get_or_404(teacher_id)
-    db.session.delete(teacher)
-    db.session.commit()
-    flash('Teacher deleted successfully!', 'warning')
-    return redirect(url_for('routes.teachers'))
+        # Only Admin, Specialist, and Technician can escalate/de-escalate
+        if current_user.role_id in [1, 2, 3]:
+            if 'escalate' in request.form:
+                escalate_value = request.form.get('escalate') == '1'
+            else:
+                escalate_value = False
 
+            if ticket.escalated != escalate_value:
+                ticket.escalated = escalate_value
+                changes_made = True
+                flash(f'Ticket {"escalated" if ticket.escalated else "de-escalated"} successfully!', 'success')
 
-# =============================================================================
-# COURSES
-# =============================================================================
+            
+        # Handle file upload
+        uploaded_file = request.files.get('attachment')
+        if uploaded_file and uploaded_file.filename != '':
+            is_valid, error_message = validate_file_upload(uploaded_file)
+            if not is_valid:
+                flash(error_message, 'error')
+                return redirect(request.url)
 
-@routes_blueprint.route('/courses', methods=['GET'])
-@login_required
-def courses():
-    page, per_page, offset = get_page_args(page_parameter='page', per_page_parameter='per_page')
-    search       = request.args.get('search', '').strip()
-    site_filter  = request.args.get('site_filter', '').strip()
-    grade_filter = request.args.get('grade_filter', '').strip()
-    dept_filter  = request.args.get('dept_filter', '').strip()
+            file_ext = os.path.splitext(uploaded_file.filename)[1].lower()
+            # Create filename with ticket ID
+            new_filename = f"ticket_{ticket.id}_{datetime.now().strftime('%Y%m%d-%H%M%S')}{file_ext}"
+            filename = secure_filename(new_filename)
+            upload_folder = current_app.config['UPLOAD_ATTACHMENT']
+            os.makedirs(upload_folder, exist_ok=True)
+            filepath = os.path.join(upload_folder, filename)
+            
+            try:
+                uploaded_file.save(filepath)
+                # Verify file was saved
+                if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+                    raise Exception("File saved as 0 bytes")
+                    
+                new_attachment = Ticket_attachment(
+                    ticket_id=ticket.id,
+                    attach_image=filename,
+                    uploaded_at=datetime.now(timezone.utc),
+                    user_id=current_user.id
+                )
+                db.session.add(new_attachment)
+                changes_made = True
+                flash('Attachment added successfully!', 'success')
+                
+            except Exception as e:
+                current_app.logger.error(f"File save failed for ticket {ticket.id}: {e}", exc_info=True)
+                flash('Failed to save attachment. Please try again.', 'danger')
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                return redirect(request.url)
 
-    query = Course.query.join(Teacher, Course.teacher_id == Teacher.id)
-    if search:
-        query = query.filter(
-            db.or_(Course.course_name.ilike(f'%{search}%'),
-                   Course.course_code.ilike(f'%{search}%'))
-        )
-    if site_filter:
-        query = query.filter(Course.site_id == site_filter)
-    if grade_filter:
-        query = query.filter(Course.grade_level == grade_filter)
-    if dept_filter:
-        query = query.filter(Teacher.department == dept_filter)
+        # Add ticket contents (text-based)
+        new_comments = [
+            Ticket_content(
+                ticket_id=ticket.id,
+                content=subform.content.data,
+                cnt_created_at=datetime.now(timezone.utc),
+                user_id=current_user.id
+            ) for subform in form.contents.entries if subform.content.data
+        ]
 
-    total       = query.count()
-    courses_q   = query.order_by(Course.course_name.asc()).offset(offset).limit(per_page).all()
-    pagination  = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
-    sites       = Site.query.order_by(Site.site_name.asc()).all()
-    departments = sorted({t.department for t in Teacher.query.all() if t.department})
+        if new_comments:
+            db.session.add_all(new_comments)
+            changes_made = True
 
-    return render_template('courses.html',
-        courses=courses_q, pagination=pagination, per_page=per_page,
-        sites=sites, grades=_GRADE_LIST, departments=departments,
-        dept_filter=dept_filter, current_page_name='Courses')
+        if changes_made:
+            ticket.updated_at = datetime.now(timezone.utc)
+            db.session.add(ticket)
+            db.session.commit()
 
+            # Send email notifications for each change
+            if ticket.tck_status != old_status:
+                send_ticket_notification('status', ticket,
+                                         old_status=old_status,
+                                         new_status=ticket.tck_status)
+            if ticket.assigned_to_id != old_assigned_to_id:
+                new_assignee = db.session.get(User, ticket.assigned_to_id) if ticket.assigned_to_id else None
+                send_ticket_notification('assigned', ticket, new_assignee=new_assignee)
+            if bool(ticket.escalated) != old_escalated:
+                send_ticket_notification('escalated', ticket, escalated=bool(ticket.escalated))
+            if new_comments:
+                send_ticket_notification('comment', ticket, commenter=current_user,
+                                         comment_text=new_comments[-1].content)
 
-@routes_blueprint.route('/add_course', methods=['GET', 'POST'])
-@login_required
-def add_course():
-    return redirect(url_for('routes.courses'))
+            flash('Ticket updated successfully!', 'success')
+        else:
+            flash('No changes detected to update.', 'warning')
 
-
-@routes_blueprint.route('/course/<int:course_id>', methods=['GET'])
-@login_required
-def course_details(course_id):
-    course = Course.query.get_or_404(course_id)
-    return render_template('course_details.html', course=course,
-                           current_page_name=course.course_name)
-
-
-@routes_blueprint.route('/edit_course/<int:course_id>', methods=['GET', 'POST'])
-@login_required
-def edit_course(course_id):
-    is_admin()
-    course = Course.query.get_or_404(course_id)
-    form = CourseForm(obj=course)
-    form.teacher_id.choices = [
-        (t.id, f'{t.last_name}, {t.first_name}')
-        for t in Teacher.query.order_by(Teacher.last_name).all()
-    ]
-    form.site_id.choices = [(s.id, s.site_name) for s in Site.query.order_by(Site.site_name).all()]
-
-    if form.validate_on_submit():
-        conflict = Course.query.filter(
-            Course.course_code == form.course_code.data.strip().upper(),
-            Course.id != course.id
-        ).first()
-        if conflict:
-            flash('A course with this code already exists.', 'danger')
-            return render_template('add_course.html', form=form, current_page_name='Edit Course')
-        course.course_name   = form.course_name.data
-        course.course_code   = form.course_code.data.strip().upper()
-        course.grade_level   = form.grade_level.data or None
-        course.period        = form.period.data or None
-        course.description   = form.description.data or None
-        course.max_students  = form.max_students.data or None
-        course.status        = form.status.data
-        course.teacher_id    = form.teacher_id.data
-        course.site_id       = form.site_id.data
-        db.session.commit()
-        flash('Course updated successfully!', 'success')
-        return redirect(url_for('routes.course_details', course_id=course.id))
-
-    return render_template('add_course.html', form=form, current_page_name='Edit Course')
-
-
-@routes_blueprint.route('/delete_course/<int:course_id>', methods=['POST'])
-@login_required
-def delete_course(course_id):
-    is_admin()
-    course = Course.query.get_or_404(course_id)
-    db.session.delete(course)
-    db.session.commit()
-    flash('Course deleted successfully!', 'warning')
-    return redirect(url_for('routes.courses'))
-
-
-# =============================================================================
-# PARENTS
-# =============================================================================
-
-@routes_blueprint.route('/parents', methods=['GET'])
-@login_required
-def parents():
-    page, per_page, offset = get_page_args(page_parameter='page', per_page_parameter='per_page')
-    search = request.args.get('search', '').strip()
-
-    query = Parent.query
-    if search:
-        query = query.filter(
-            db.or_(Parent.first_name.ilike(f'%{search}%'),
-                   Parent.last_name.ilike(f'%{search}%'),
-                   Parent.email.ilike(f'%{search}%'))
+        return redirect(request.url)  # Stay on the same page after the changes
+    return render_template('edit_ticket.html', form=form, ticket=ticket,
+        current_path=current_path,
+        current_page_name=current_page_name
         )
 
-    total      = query.count()
-    parents_q  = query.order_by(Parent.last_name.asc(), Parent.first_name.asc()).offset(offset).limit(per_page).all()
+
+
+
+# ****************** Add Comment (AJAX) *******************************
+@routes_blueprint.route('/add_comment/<int:ticket_id>', methods=['POST'])
+@login_required
+def add_comment(ticket_id):
+    ticket = Ticket.query.get_or_404(ticket_id)
+
+    if current_user.role_id not in [1, 2, 3] and current_user.id != ticket.user_id:
+        return jsonify({'success': False, 'message': 'Permission denied'}), 403
+
+    content = request.form.get('content', '').strip()
+    if not content:
+        return jsonify({'success': False, 'message': 'Comment cannot be empty'}), 400
+
+    try:
+        comment = Ticket_content(
+            ticket_id=ticket.id,
+            content=content,
+            cnt_created_at=datetime.now(timezone.utc),
+            user_id=current_user.id
+        )
+        db.session.add(comment)
+        ticket.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"add_comment failed: {e}")
+        return jsonify({'success': False, 'message': 'Database error saving comment'}), 500
+
+    send_ticket_notification('comment', ticket, commenter=current_user, comment_text=content)
+
+    return jsonify({
+        'success': True,
+        'comment': {
+            'author': current_user.get_full_name(),
+            'date': comment.cnt_created_at.strftime('%m-%d-%Y %H:%M'),
+            'content': content
+        }
+    })
+
+
+# ****************** Delete Ticket Page *******************************
+@routes_blueprint.route('/delete_ticket/<int:ticket_id>', methods=['POST'])
+@login_required
+def delete_ticket(ticket_id):
+    is_admin()  # Ensure only admins can access this route
+    ticket = Ticket.query.get_or_404(ticket_id)
+
+    try:
+        # Log ticket deletion
+        current_app.logger.info(f"Deleting ticket ID: {ticket_id} by user: {current_user.id}")
+        
+        # Get all attachments for this ticket
+        attachments = Ticket_attachment.query.filter_by(ticket_id=ticket_id).all()
+        current_app.logger.debug(f"Found {len(attachments)} attachments to delete for ticket {ticket_id}")
+
+        for attachment in attachments:
+            if attachment.attach_image:
+                # Extract filename safely
+                filename = attachment.attach_image.split('/')[-1] if '/' in attachment.attach_image else attachment.attach_image
+                
+                # Construct full file path
+                file_path = os.path.join(current_app.config['UPLOAD_ATTACHMENT'], filename)
+                current_app.logger.debug(f"Attempting to delete file: {file_path}")
+                
+                # Verify and delete file
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                        current_app.logger.info(f"File deleted successfully: {file_path}")
+                    except OSError as e:
+                        current_app.logger.error(f"Error deleting file {file_path}: {str(e)}")
+                        raise  # Re-raise to trigger rollback
+                else:
+                    current_app.logger.warning(f"File not found: {file_path} (may have been deleted already)")
+                
+                # Delete attachment record
+                db.session.delete(attachment)
+                current_app.logger.debug(f"Attachment {attachment.id} marked for deletion")
+
+        # Delete the ticket
+        db.session.delete(ticket)
+        db.session.commit()
+        current_app.logger.info(f"Ticket {ticket_id} and attachments deleted successfully")
+        
+        flash('Ticket and all attachments deleted successfully', 'success')
+        return redirect(url_for('routes.tickets'))
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting ticket {ticket_id}: {str(e)}", exc_info=True)
+        flash('An error occurred while deleting the ticket. Please try again.', 'danger')
+        return redirect(url_for('routes.tickets'))
+
+
+
+# *********************************************************************
+# ****************** Title Management Page *******************************
+@routes_blueprint.route('/titles')
+@login_required
+def titles():
+        # Mapping paths to page names
+    page_names = {'/titles': 'Manage Ticket Titles'}
+    current_path = request.path
+    current_page_name = page_names.get(current_path, 'Unknown Page')
+    is_admin()  # Ensure only admins can access this route
+    # Get the page number and per_page from the query parameters, default to 10 for per_page
+    page, per_page, offset = get_page_args(page_parameter="page", per_page_parameter="per_page")
+    # Query the users
+    sort = request.args.get('sort', 'asc')
+    order = Title.title_name.desc() if sort == 'desc' else Title.title_name.asc()
+    total = Title.query.count()
+    titles = Title.query.order_by(order).offset(offset).limit(per_page).all()
+    # Set up pagination with Bootstrap 5 styling
     pagination = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
+    return render_template('titles.html', titles=titles, pagination=pagination, per_page=per_page, total=total,
+        sort=sort,
+        current_path=current_path,
+        current_page_name=current_page_name
+    )
 
-    return render_template('parents.html',
-        parents=parents_q, pagination=pagination, per_page=per_page,
-        current_page_name='Parents')
 
-
-@routes_blueprint.route('/add_parent', methods=['GET', 'POST'])
+# ****************** Add Title Page *******************************
+@routes_blueprint.route('/add_title', methods=['GET', 'POST'])
 @login_required
-def add_parent():
-    return redirect(url_for('routes.parents'))
-
-
-@routes_blueprint.route('/parent/<int:parent_id>', methods=['GET'])
-@login_required
-def parent_details(parent_id):
-    parent = Parent.query.get_or_404(parent_id)
-    return render_template('parent_details.html', parent=parent,
-                           current_page_name=f'{parent.first_name} {parent.last_name}')
-
-
-@routes_blueprint.route('/edit_parent/<int:parent_id>', methods=['GET', 'POST'])
-@login_required
-def edit_parent(parent_id):
-    is_admin()
-    parent = Parent.query.get_or_404(parent_id)
-    form = ParentForm(obj=parent)
-    form.student_ids.choices = [
-        (s.id, f'{s.last_name}, {s.first_name} ({s.student_id})')
-        for s in Student.query.order_by(Student.last_name).all()
-    ]
-
-    if request.method == 'GET':
-        form.student_ids.data = [s.id for s in parent.students]
-
+def add_title():
+        # Mapping paths to page names
+    page_names = {'/add_title': 'New Ticket Title'}
+    current_path = request.path
+    current_page_name = page_names.get(current_path, 'Unknown Page')
+    is_admin()  # Ensure only admins can access this route
+    form = TitleForm()
     if form.validate_on_submit():
-        parent.first_name   = form.first_name.data
-        parent.middle_name  = form.middle_name.data or None
-        parent.last_name    = form.last_name.data
-        parent.relationship = form.relationship.data
-        parent.email        = form.email.data or None
-        parent.phone        = form.phone.data or None
-        parent.status       = form.status.data
-        parent.students     = Student.query.filter(Student.id.in_(form.student_ids.data or [])).all()
+        # Check if a title with the same name already exists
+        existing_title = Title.query.filter_by(title_name=form.title_name.data).first()
+        if existing_title:
+            flash('This title already exists.', 'danger')
+            return render_template('add_title.html', form=form)  # Re-render form with the error message
+        # Create and add the new title
+        new_title = Title(
+            title_name=form.title_name.data
+        )
+        db.session.add(new_title)
         db.session.commit()
-        flash('Parent updated successfully!', 'success')
-        return redirect(url_for('routes.parent_details', parent_id=parent.id))
+        flash('Title added successfully!', 'success')
+        return redirect(url_for('routes.titles'))
+    return render_template('add_title.html', form=form, 
+        current_path=current_path, 
+        current_page_name=current_page_name
+    )
 
-    return render_template('add_parent.html', form=form, current_page_name='Edit Parent')
-
-
-@routes_blueprint.route('/delete_parent/<int:parent_id>', methods=['POST'])
+# ****************** Edit Title Page *******************************
+@routes_blueprint.route('/edit_title/<int:title_id>', methods=['GET', 'POST'])
 @login_required
-def delete_parent(parent_id):
-    is_admin()
-    parent = Parent.query.get_or_404(parent_id)
-    db.session.delete(parent)
+def edit_title(title_id):
+    is_admin()  # Ensure only admins can access this route
+    title = Title.query.get_or_404(title_id)
+    form = TitleForm(obj=title)
+    if form.validate_on_submit():
+        # Check for duplicate entries
+        existing_title = Title.query.filter(Title.title_name == form.title_name.data, Title.id != title.id).first()
+        if existing_title:
+            flash('This title already exists.', 'danger')
+            return render_template('add_title.html', form=form)  # Re-render form with the error message
+        # Check if there are any changes to the form
+        if (
+            title.title_name == form.title_name.data
+        ):
+            flash('No changes were made.', 'info')
+            return render_template('edit_title.html', form=form, title=title)
+        title.title_name = form.title_name.data
+        db.session.commit()
+        flash('Title updated successfully!', 'success')
+        return redirect(url_for('routes.titles'))
+    return render_template('edit_title.html', form=form, title=title)
+
+# ****************** Delete Title Page *******************************
+@routes_blueprint.route('/delete_title/<int:title_id>', methods=['POST'])
+@login_required
+def delete_title(title_id):
+    is_admin()  # Ensure only admins can access this route
+    title = Title.query.get_or_404(title_id)
+    db.session.delete(title)
     db.session.commit()
-    flash('Parent deleted successfully!', 'warning')
-    return redirect(url_for('routes.parents'))
+    flash('Title deleted successfully!', 'warning')
+    return redirect(url_for('routes.titles'))
+
+
 
 

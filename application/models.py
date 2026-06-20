@@ -37,31 +37,6 @@ class Organization(db.Model):
     ftp_last_run_status  = db.Column(db.String(20), nullable=True)
     ftp_schedule_start_date = db.Column(db.Date, nullable=True)
     ftp_schedule_stop_date  = db.Column(db.Date, nullable=True)
-    # Dashboard card visibility
-    show_demographics     = db.Column(db.Boolean, default=True, nullable=False, server_default='1')
-    show_absenteeism      = db.Column(db.Boolean, default=True, nullable=False, server_default='1')
-    show_discipline       = db.Column(db.Boolean, default=True, nullable=False, server_default='1')
-    show_swd              = db.Column(db.Boolean, default=True, nullable=False, server_default='1')
-    show_registration     = db.Column(db.Boolean, default=True, nullable=False, server_default='1')
-    show_enrollment       = db.Column(db.Boolean, default=True, nullable=False, server_default='1')
-    show_attendance_rates = db.Column(db.Boolean, default=True, nullable=False, server_default='1')
-
-
-class Grade(db.Model):
-    __tablename__ = 'grade'
-    id                = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    grades_stuid      = db.Column(db.String(50),  nullable=False, index=True)
-    grades_schoolid   = db.Column(db.String(100), nullable=True)
-    grades_coursenum  = db.Column(db.String(50),  nullable=True)
-    grades_teacherid  = db.Column(db.String(50),  nullable=True)
-    grades_courseyr   = db.Column(db.String(20),  nullable=True)
-    grades_term       = db.Column(db.String(20),  nullable=True)
-    grades_grade      = db.Column(db.String(5),   nullable=True)
-    grades_mark       = db.Column(db.Numeric(5, 2), nullable=True)
-    grades_type       = db.Column(db.String(20),  nullable=True)
-    grades_credatt    = db.Column(db.Numeric(5, 2), nullable=True)
-    grades_credcomp   = db.Column(db.Numeric(5, 2), nullable=True)
-    grades_currgrade  = db.Column(db.String(5),   nullable=True)
 
 
 class Notification(db.Model):
@@ -128,135 +103,61 @@ class Site(db.Model):
     site_address = db.Column(db.String(100), nullable=False)
     site_type = db.Column(db.String(100), nullable=False)
     users = db.relationship('User', backref='site', lazy=True)
+    tickets = db.relationship('Ticket', back_populates='site')  # Matches the relationship in Ticket
 
 
-# Association tables for many-to-many relationships
-student_course = db.Table('student_course',
-    db.Column('student_id', db.Integer, db.ForeignKey('student.id', ondelete='CASCADE'), primary_key=True),
-    db.Column('course_id',  db.Integer, db.ForeignKey('course.id',  ondelete='CASCADE'), primary_key=True)
-)
+class Ticket(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    title_id = db.Column(db.Integer, db.ForeignKey('title.id'), nullable=False)
+    tck_status = db.Column(db.String(45), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=_utcnow, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # User who created the ticket
+    site_id = db.Column(db.Integer, db.ForeignKey('site.id'), nullable=False)  # Related site
+    assigned_to_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # User assigned to the ticket
+    escalated = db.Column(db.Integer, nullable=True, default=0) 
 
-student_parent = db.Table('student_parent',
-    db.Column('student_id', db.Integer, db.ForeignKey('student.id', ondelete='CASCADE'), primary_key=True),
-    db.Column('parent_id',  db.Integer, db.ForeignKey('parent.id',  ondelete='CASCADE'), primary_key=True)
-)
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='created_tickets')
+    assigned_to = db.relationship('User', foreign_keys=[assigned_to_id], backref='assigned_tickets')
+    title = db.relationship('Title', backref='tickets')
+    contents = db.relationship('Ticket_content', back_populates='ticket', cascade='all, delete-orphan')
+    site = db.relationship('Site', back_populates='tickets')
+    attachments = db.relationship('Ticket_attachment', backref='ticket', lazy=True, cascade='all, delete-orphan')
+    
+    @classmethod
+    def get_tickets_by_status(cls, status):
+        return cls.query.filter_by(tck_status=status).all()
 
-
-class Student(db.Model):
-    id            = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    first_name    = db.Column(db.String(50), nullable=False)
-    middle_name   = db.Column(db.String(50), nullable=True)
-    last_name     = db.Column(db.String(50), nullable=False)
-    student_id    = db.Column(db.String(20), unique=True, nullable=False)
-    ssid          = db.Column(db.String(20), nullable=True)
-    cds_code      = db.Column(db.String(14), nullable=True)
-    grade         = db.Column(db.String(5),  nullable=False)
-    gender        = db.Column(db.String(1),  nullable=True)
-    date_of_birth = db.Column(db.Date, nullable=True)
-    gradyr        = db.Column(db.String(4),  nullable=True)
-    ethnicity     = db.Column(db.String(3),  nullable=True)
-    frm_code      = db.Column(db.String(1),  nullable=True)
-    english_status = db.Column(db.String(10), nullable=True)
-    enter_date    = db.Column(db.Date, nullable=True)
-    exit_date     = db.Column(db.Date, nullable=True)
-    disability    = db.Column(db.String(20), nullable=True)
-    sped_exdate   = db.Column(db.Date, nullable=True)
-    dwelling      = db.Column(db.String(2),  nullable=True)
-    migrant       = db.Column(db.Boolean, nullable=True, default=False)
-    schoolyr      = db.Column(db.String(9),  nullable=True)
-    foster        = db.Column(db.Boolean, nullable=True, default=False)
-    sed504        = db.Column(db.Boolean, nullable=True, default=False)
-    pk_yr_id      = db.Column(db.String(20), nullable=True)
-    email         = db.Column(db.String(120), nullable=True)
-    site_id       = db.Column(db.Integer, db.ForeignKey('site.id', ondelete='CASCADE'), nullable=False)
-    site          = db.relationship('Site', backref=db.backref('students', lazy=True))
-
-    @property
-    def is_active(self):
-        from datetime import date
-        today = date.today()
-        enter_ok = self.enter_date is None or self.enter_date <= today
-        exit_ok  = self.exit_date  is None or self.exit_date  >= today
-        return enter_ok and exit_ok
-
-    @property
-    def status(self):
-        return 'Active' if self.is_active else 'Inactive'
-
-    @status.setter
-    def status(self, value):
-        pass  # computed — assignment silently ignored for backward compat
+    @classmethod
+    def get_tickets_assigned_to_user(cls, user_id):
+        return cls.query.filter_by(assigned_to_id=user_id).all()
 
 
-class Absence(db.Model):
-    id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    site_id     = db.Column(db.Integer, db.ForeignKey('site.id', ondelete='CASCADE'), nullable=False)
-    ssid        = db.Column(db.String(20), nullable=True)
-    grade       = db.Column(db.String(5),  nullable=True)
-    abs_date    = db.Column(db.Date,         nullable=True)
-    abs_desc    = db.Column(db.String(200), nullable=True)
-    abs_abbr    = db.Column(db.String(20),  nullable=True)
-    bell_period = db.Column(db.String(20),  nullable=True)
-    school_yr   = db.Column(db.String(9),   nullable=True)
-    site        = db.relationship('Site', backref=db.backref('absences', lazy=True))
+class Title(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title_name = db.Column(db.String(100), unique=True, nullable=False)
 
 
-class Incident(db.Model):
-    id             = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    sisid          = db.Column(db.String(20),  nullable=True)
-    site           = db.Column(db.String(100), nullable=True)
-    cds_code       = db.Column(db.String(14),  nullable=True)
-    incident_id    = db.Column(db.String(30),  nullable=True)
-    incident_date  = db.Column(db.Date,         nullable=True)
-    schoolyr       = db.Column(db.String(9),   nullable=True)
-    incident_time  = db.Column(db.String(10),  nullable=True)
-    day_of_week    = db.Column(db.String(10),  nullable=True)
-    major          = db.Column(db.String(100), nullable=True)
-    minor          = db.Column(db.String(100), nullable=True)
-    suspended_days = db.Column(db.Float,        nullable=True)
+class Ticket_content(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    cnt_created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+    # Relationship back to the Ticket model
+    ticket = db.relationship('Ticket', back_populates='contents')
+    user = db.relationship('User', backref='comments')
 
 
-class Teacher(db.Model):
-    id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    first_name  = db.Column(db.String(50), nullable=False)
-    middle_name = db.Column(db.String(50), nullable=True)
-    last_name   = db.Column(db.String(50), nullable=False)
-    employee_id = db.Column(db.String(20), unique=True, nullable=False)
-    email       = db.Column(db.String(120), nullable=True)
-    department  = db.Column(db.String(100), nullable=True)
-    status      = db.Column(db.String(20), nullable=False, default='Active')
-    site_id     = db.Column(db.Integer, db.ForeignKey('site.id', ondelete='CASCADE'), nullable=False)
-    site        = db.relationship('Site', backref=db.backref('teachers', lazy=True))
+class Ticket_attachment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    attach_image = db.Column(db.String(255), nullable=False)  # This column should exist
+    uploaded_at = db.Column(db.DateTime, default=_utcnow, nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
-
-class Course(db.Model):
-    id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    course_name = db.Column(db.String(100), nullable=False)
-    course_code = db.Column(db.String(20), unique=True, nullable=False)
-    grade_level = db.Column(db.String(5),  nullable=True)
-    period      = db.Column(db.String(20), nullable=True)
-    description  = db.Column(db.Text, nullable=True)
-    max_students = db.Column(db.Integer, nullable=True)
-    status       = db.Column(db.String(20), nullable=False, default='Active')
-    teacher_id  = db.Column(db.Integer, db.ForeignKey('teacher.id', ondelete='SET NULL'), nullable=True)
-    site_id     = db.Column(db.Integer, db.ForeignKey('site.id', ondelete='CASCADE'), nullable=False)
-    teacher     = db.relationship('Teacher', backref=db.backref('courses', lazy=True))
-    site        = db.relationship('Site', backref=db.backref('courses', lazy=True))
-    students    = db.relationship('Student', secondary=student_course,
-                                  backref=db.backref('courses', lazy=True))
-
-
-class Parent(db.Model):
-    id           = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    first_name   = db.Column(db.String(50), nullable=False)
-    middle_name  = db.Column(db.String(50), nullable=True)
-    last_name    = db.Column(db.String(50), nullable=False)
-    relationship = db.Column(db.String(30), nullable=False)
-    email        = db.Column(db.String(120), nullable=True)
-    phone        = db.Column(db.String(20), nullable=True)
-    status       = db.Column(db.String(20), nullable=False, default='Active')
-    students     = db.relationship('Student', secondary=student_parent,
-                                   backref=db.backref('parents', lazy=True))
 
 
 class BulkUploadLog(db.Model):
