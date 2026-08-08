@@ -111,3 +111,22 @@ Focus states use a global :focus-visible outline in the accent color — don't s
 
 Navigation (application/templates/includes/nav.html)
 The sidebar is a flush, full-height, dark-navy panel, not a floating white card. Active links get a left accent border, not a filled pill — set via a plain active class in the Jinja conditional, not bg-gradient-main text-white. The top bar's navbar-collapse has no real Bootstrap toggler anywhere in the markup, so ".navbar-main .navbar-collapse { display: flex !important }" in style.css keeps the mobile hamburger and user info visible at every breakpoint — don't remove that rule or mobile nav disappears.
+
+Backend Security Architecture
+These patterns came out of a full security audit and its fixes — preserve them when touching nearby code.
+
+Config resolution: create_app(config_name=None) in main.py resolves config_name from the FLASK_CONFIG env var, falling back to 'default', which maps to ProductionConfig in config.py. Local development must set FLASK_CONFIG=development in .env (DevelopmentConfig is the only place SESSION_COOKIE_SECURE is turned off, for plain-HTTP testing). The production startup guards in create_app compare the resolved class (config[config_name] is ProductionConfig), not the string 'production' — so they still fire when config_name resolves to 'default'. Don't reintroduce a string comparison there.
+
+Ticket authorization: can_access_ticket(ticket) in application/routes.py is the single authorization check for ticket detail/comment/attachment routes (edit_ticket, add_comment, download_attachment, delete_attachment). Admins/Specialists (role_id 1/2) can access any ticket; Technicians (role_id 3) are scoped to their own site, matching the /tickets list filter; everyone else only their own tickets. Any new ticket-detail-style route must call this helper rather than re-deriving its own role_id check — the routes previously each had a slightly different inline check, and Technicians could reach other sites' tickets by guessing a ticket_id.
+
+edit_user authorization: non-admin "tech role" staff (Specialist/Technician) may only edit non-admin users at their own site. role_id and site_id choices are restricted server-side, not just in the rendered <select> — see the re-validation inside form.validate_on_submit(). Don't loosen this without equivalent re-validation; the original version let any tech-role account promote itself (or anyone) to Admin and reset any user's password.
+
+delete_user blocks deleting your own currently-logged-in account and deleting the last remaining Admin (role_id=1).
+
+Login (routes.py:login) always runs a password-hash comparison — even for a nonexistent account, via the module-level _DUMMY_PASSWORD_HASH — and always shows one generic failure message regardless of whether the account doesn't exist, has the wrong password, is inactive, or is locked. This is intentional (anti-enumeration); don't reintroduce per-case messages.
+
+CSP: main.py issues a fresh nonce per request (g.csp_nonce) and script-src only allows 'self' plus that nonce — there is no 'unsafe-inline' for scripts. Any new inline <script> block in a template must add nonce="{{ g.csp_nonce }}" or the browser will silently block it.
+
+Rate limiting: the Limiter in main.py has global default_limits (200/hour, 50/minute per IP), with the static endpoint explicitly exempted via a request_filter (otherwise normal page loads 429 on their own CSS/JS). Login (5/min), set_password and test_email (10/min), and add_comment (20/min) carry their own tighter @limiter.limit(...).
+
+Dependencies: pip-audit is a dev dependency (uv run pip-audit) — run it before any release. It has already caught real, then-current CVEs in cryptography and idna once.

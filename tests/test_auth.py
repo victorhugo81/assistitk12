@@ -2,6 +2,7 @@
 Authentication tests: login, logout, lockout, must-change-password redirect.
 """
 import pytest
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
 
 
@@ -54,7 +55,14 @@ class TestLogin:
             'email': 'admin@test.com',
             'password': 'Admin@Password1',
         }, follow_redirects=True)
-        assert b'inactive' in r.data.lower()
+        # Login responses use one generic message regardless of the reason
+        # (wrong password, inactive, locked) so they can't be used to
+        # enumerate account state — see security audit finding L1.
+        assert b'login failed' in r.data.lower()
+        assert b'inactive' not in r.data.lower()
+        # ...and no session was actually established
+        protected = client.get('/', follow_redirects=False)
+        assert protected.status_code == 302
 
         # Restore status
         with app.app_context():
@@ -78,15 +86,23 @@ class TestLogin:
             'email': 'user@test.com',
             'password': 'Regular@Password1',
         }, follow_redirects=True)
-        assert b'locked' in r.data.lower()
+        # A generic message is shown even though the account is actually
+        # locked (see security audit finding L1) — verify the lockout itself
+        # via the database instead of a leaky, lockout-specific message.
+        assert b'login failed' in r.data.lower()
+        protected = client.get('/', follow_redirects=False)
+        assert protected.status_code == 302
 
-        # Unlock for other tests
         with app.app_context():
             from application.models import User
             from application.utils import hash_email
             from main import db
             key = app.config['SECRET_KEY']
             u = User.query.filter_by(email_hash=hash_email('user@test.com', key)).first()
+            assert u.locked_until is not None
+            assert u.locked_until > datetime.now(timezone.utc).replace(tzinfo=None)
+
+            # Unlock for other tests
             u.failed_login_attempts = 0
             u.locked_until = None
             db.session.commit()

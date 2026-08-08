@@ -76,7 +76,7 @@
 <!-- End main content card -->
 
 <!-- tottle button -->
-<script>
+<script nonce="{{ g.csp_nonce }}">
     function updateStatusLabel() {
         const checkbox = document.getElementById('msg_status');
         const label = document.getElementById('statusLabel');

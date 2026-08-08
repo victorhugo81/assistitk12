@@ -138,7 +138,7 @@
               <div class="pe-2">
                 <div class="chart">
                   <canvas id="chart-bars" class="chart-canvas" height="170"></canvas>
-                  <script>
+                  <script nonce="{{ g.csp_nonce }}">
                     // Pass the data to JavaScript
                     var weekdays = {{ weekdays|tojson }};
                     var weekday_counts = {{ weekday_counts|tojson }};
@@ -162,7 +162,7 @@
               <div class="pe-2">
                 <div class="chart">
                   <canvas id="chart-line" class="chart-canvas" height="170"></canvas>
-                  <script>
+                  <script nonce="{{ g.csp_nonce }}">
                     // Pass the data to JavaScript
                     var months = {{ months|tojson }};
                     var counts = {{ counts|tojson }};
@@ -231,7 +231,7 @@
 <!-- End main content card -->
 
 
-<script>
+<script nonce="{{ g.csp_nonce }}">
   </script>
   
 <script src="{{ url_for('static', filename='js/plugins/chartjs.min.js') }}"></script>

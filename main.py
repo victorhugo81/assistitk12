@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, g
 from flask_wtf.csrf import CSRFProtect
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -9,14 +9,17 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_apscheduler import APScheduler
 from werkzeug.middleware.proxy_fix import ProxyFix
-from config import config
+from config import config, ProductionConfig
 
 # Initialize global extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
 csrf = CSRFProtect()
 mail = Mail()
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per hour", "50 per minute"],
+)
 scheduler = APScheduler()
 
 
@@ -25,7 +28,13 @@ def load_user(user_id):
     from application.models import User
     return db.session.get(User, int(user_id))
 
-def create_app(config_name='default'):
+def create_app(config_name=None):
+    # Secure by default: if the caller doesn't specify a config, fall back to
+    # FLASK_CONFIG (set FLASK_CONFIG=development in .env for local dev), and
+    # only then to 'default' (ProductionConfig). This is what keeps
+    # `gunicorn "main:create_app()"` — i.e. no explicit config argument —
+    # from silently running in debug mode.
+    config_name = config_name or os.environ.get('FLASK_CONFIG', 'default')
     app = Flask(
         __name__,
         template_folder='application/templates',
@@ -40,8 +49,10 @@ def create_app(config_name='default'):
     # Use environment-specific configuration
     app.config.from_object(config[config_name])
 
-    # Production startup guards — catch misconfiguration before the app serves traffic
-    if config_name == 'production':
+    # Production startup guards — catch misconfiguration before the app serves traffic.
+    # Checked against the resolved config class (not the string key) so that
+    # 'default' — which now also resolves to ProductionConfig — is guarded too.
+    if config[config_name] is ProductionConfig:
         if app.config.get('SECRET_KEY') == 'dev-secret-key':
             raise RuntimeError(
                 "SECRET_KEY must be set to a strong random value in production. "
@@ -66,6 +77,23 @@ def create_app(config_name='default'):
     limiter.init_app(app)
     scheduler.init_app(app)
     login_manager.login_view = "routes.login"
+
+    # Static assets (CSS/JS/images) shouldn't count against the default
+    # per-IP rate limit — a single page view can request a dozen of them.
+    @limiter.request_filter
+    def _exempt_static():
+        from flask import request as _request
+        return _request.endpoint == 'static'
+
+    # Warn if session cookies are not HTTPS-only outside of debug mode
+    if not app.debug and not app.config.get('SESSION_COOKIE_SECURE'):
+        import warnings
+        warnings.warn(
+            "SESSION_COOKIE_SECURE is False in a non-debug environment. "
+            "Session cookies will be transmitted over HTTP.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     # Warn if rate-limit storage is in-memory (ineffective across restarts)
     if app.config.get('RATELIMIT_STORAGE_URI', 'memory://') == 'memory://':
@@ -93,6 +121,15 @@ def create_app(config_name='default'):
     from application.routes import routes_blueprint
     app.register_blueprint(routes_blueprint)
 
+    # Per-request CSP nonce for inline <script> blocks — lets templates opt
+    # in individually (nonce="{{ g.csp_nonce }}") instead of the CSP allowing
+    # 'unsafe-inline' globally, which would let any injected <script> run too.
+    import secrets as _secrets
+
+    @app.before_request
+    def set_csp_nonce():
+        g.csp_nonce = _secrets.token_urlsafe(16)
+
     # Security headers applied to every response
     @app.after_request
     def set_security_headers(response):
@@ -102,7 +139,7 @@ def create_app(config_name='default'):
         response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
+            f"script-src 'self' 'nonce-{g.get('csp_nonce', '')}'; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data:; "

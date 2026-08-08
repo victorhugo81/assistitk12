@@ -190,26 +190,33 @@ uv sync
 
 AssistITK12 includes the following security measures:
 
-- **Login rate limiting** — brute force protection via Flask-Limiter (10 attempts/min per IP).
-- **Login lockout** — accounts are automatically locked after repeated failed login attempts.
+- **Rate limiting** — brute force / abuse protection via Flask-Limiter: 10 attempts/min per IP on login, 10/min on password-set and test-email, 20/min on ticket comments, plus a 200/hour, 50/minute default across every other route (static assets are exempted).
+- **Login lockout** — accounts are automatically locked for 15 minutes after 5 failed attempts.
+- **Anti-enumeration login responses** — login always shows one generic failure message and always runs a password-hash comparison (against a dummy hash for unknown emails), so neither the message nor the response time reveals whether an account exists, is inactive, or is locked.
 - **Account status enforcement** — inactive users cannot authenticate.
+- **Site-scoped ticket access** — Technicians can only view/edit/comment on/download attachments from tickets at their own site, matching the scoping already applied to the ticket list (enforced centrally via `can_access_ticket()` in `application/routes.py`).
 - **CSRF protection** — all forms are protected using Flask-WTF.
+- **Content-Security-Policy with per-request nonces** — inline `<script>` blocks are allowed only via a fresh nonce issued per request; `'unsafe-inline'` is not used for scripts.
 - **Password hashing** — passwords are hashed using werkzeug's secure default (scrypt).
 - **Password complexity** — minimum 12 characters with uppercase, lowercase, number, and special character required.
 - **Temporary password enforcement** — bulk-uploaded users receive a random temporary password and must change it before accessing the application.
-- **Encrypted SMTP credentials** — email passwords are stored encrypted using Fernet symmetric encryption.
+- **Encrypted SMTP/FTP credentials** — SMTP and FTP passwords are stored encrypted using Fernet symmetric encryption; saving FTP settings without TLS shows an explicit cleartext-transmission warning.
 - **Encrypted user emails** — user email addresses are stored encrypted in the database using Fernet symmetric encryption.
-- **Role-based access control** — routes are protected based on user role (Admin, Specialist, Technician).
+- **Role-based access control** — routes are protected based on user role (Admin, Specialist, Technician). Non-admin staff cannot edit Admin accounts, escalate their own role, or manage users at another site.
+- **Account-deletion safeguards** — an Admin can't delete their own account or the last remaining Admin account.
+- **Secure-by-default configuration** — an unspecified/omitted app config resolves to `ProductionConfig` rather than debug mode (see [Production Deployment](#production-deployment)).
+- **Dependency scanning** — `pip-audit` is included as a dev dependency; run it before releases (`uv run pip-audit`).
 
 ## Production Deployment
 
 For production environments:
 
-1. Use a production WSGI server like Gunicorn:
+1. Use a production WSGI server like Gunicorn, passing the production config explicitly:
    ```bash
    uv add gunicorn
-   gunicorn -w 4 "main:create_app()"
+   gunicorn -w 4 "main:create_app('production')"
    ```
+   > **Important:** `create_app()` with no argument now resolves to `ProductionConfig` by default (secure-by-default), but always pass `'production'` explicitly in the launch command anyway — don't rely on the default alone.
 
 2. Set up a reverse proxy with Nginx or Apache
 
@@ -220,6 +227,8 @@ For production environments:
    RATELIMIT_STORAGE_URI=redis://localhost:6379/0
    ```
    > **Note:** In production, set `RATELIMIT_STORAGE_URI` to a Redis instance. The default in-memory storage does not persist across restarts or scale across multiple workers.
+
+4. For **local development only**, add `FLASK_CONFIG=development` to your `.env` (or run `flask --app "main:create_app('development')" run`). Without it, `flask run` now also defaults to the secure production config, and `SESSION_COOKIE_SECURE=True` will prevent session cookies from being sent over plain HTTP.
 
 ## Contributing
 

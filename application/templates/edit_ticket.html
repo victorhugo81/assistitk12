@@ -273,7 +273,7 @@
             </div>
 
                         <!-- JavaScript for Comments -->
-<script>
+<script nonce="{{ g.csp_nonce }}">
     const addBtn     = document.getElementById('add-content');
     const formWrap   = document.getElementById('comment-form-wrapper');
     const cancelBtn  = document.getElementById('cancel-comment');
@@ -339,7 +339,7 @@
 
 
             <!-- JavaScript for delete attachments -->
-            <script>
+            <script nonce="{{ g.csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // Select all delete attachment buttons
     const deleteButtons = document.querySelectorAll('.delete-attachment-btn');

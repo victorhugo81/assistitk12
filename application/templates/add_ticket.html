@@ -56,7 +56,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ g.csp_nonce }}">
 document.getElementById('ticketForm').addEventListener('submit', function(e) {
     const fileInput = document.getElementById('attachment');
     const fileError = document.getElementById('fileError');

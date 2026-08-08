@@ -98,7 +98,7 @@
     </footer>
 
     <script src="{{ url_for('static', filename='js/core/bootstrap.bundle.min.js') }}"></script>
-    <script>
+    <script nonce="{{ g.csp_nonce }}">
       // Copyright year
       document.getElementById('copy-year').textContent = new Date().getFullYear();
     </script>

@@ -6,7 +6,7 @@
       <div class="col-12 text-end">
         <div class="copyright text-sm text-muted">
           <a href="" class="font-weight-bold" target="_blank">AssistITk12</a>
-          © <script>
+          © <script nonce="{{ g.csp_nonce }}">
             document.write(new Date().getFullYear());
           </script>
         </div>
@@ -23,7 +23,7 @@
 
 
 <!--   close warning messages  -->
-<script>
+<script nonce="{{ g.csp_nonce }}">
   setTimeout(() => {
     const alerts = document.querySelectorAll('.alert');
     alerts.forEach(alert => alert.classList.remove('show'));
@@ -33,7 +33,7 @@
 
 
 <!-- Mobile menu toggle -->
-<script>
+<script nonce="{{ g.csp_nonce }}">
 (function () {
   const toggle = document.querySelector('.mobile-menu-toggle');
   const wrapper = document.getElementById('menuToggle');
@@ -77,7 +77,7 @@
 <script src="{{ url_for('static', filename='js/plugins/perfect-scrollbar.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/plugins/smooth-scrollbar.min.js') }}"></script>
 
-<script>
+<script nonce="{{ g.csp_nonce }}">
 var win = navigator.platform.indexOf('Win') > -1;
 if (win && document.querySelector('#sidenav-scrollbar')) {
 var options = {
@@ -87,7 +87,7 @@ Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
 }
 </script>
 <!-- Delete confirmation modal controller -->
-<script>
+<script nonce="{{ g.csp_nonce }}">
 (function () {
   var modalEl    = document.getElementById('deleteConfirmModal');
   if (!modalEl) return;
@@ -131,7 +131,7 @@ Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
 </script>
 
 <!-- Unsaved changes warning -->
-<script>
+<script nonce="{{ g.csp_nonce }}">
 (function () {
   var _dirty = false;
 
@@ -165,8 +165,6 @@ Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
 }());
 </script>
 
-<!-- Github buttons -->
-<script async defer src="https://buttons.github.io/buttons.js"></script>
 <!-- Control Center for Material Dashboard: parallax effects, scripts for the example pages etc -->
 <script src="{{ url_for('static', filename='js/material-dashboard.js') }}"></script>
 </body>

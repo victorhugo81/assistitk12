@@ -38,6 +38,11 @@ def get_assigned_users():
 # This allows for modular application structure and route organization
 routes_blueprint = Blueprint('routes', __name__)
 
+# Fixed hash checked (and discarded) when a login is attempted for an email
+# that doesn't exist, so check_password_hash() always runs and the response
+# time can't be used to enumerate which accounts exist.
+_DUMMY_PASSWORD_HASH = generate_password_hash(secrets.token_urlsafe(32))
+
 @routes_blueprint.app_context_processor
 def inject_active_notifications():
     try:
@@ -66,6 +71,7 @@ def enforce_password_change():
 
 # ****************** Set Password (temp password flow) *************
 @routes_blueprint.route('/set-password', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", key_func=get_remote_address)
 @login_required
 def set_password():
     org = db.session.get(Organization, 1)
@@ -135,11 +141,27 @@ def is_tech_role():
     """
     Check if the current user has a technical role.
     Abort with 403 Forbidden if the user is not in a tech role.
-    
+
     Technical roles are Specialist (role_id=2) and Technician (role_id=3).
     """
     if not current_user.is_authenticated or current_user.role_id not in [2, 3]:  # Assuming 2 = Specialist, 3 = Technician
         abort(403)
+
+def can_access_ticket(ticket):
+    """
+    Central authorization check for ticket detail/comment/attachment routes.
+
+    Admins and Specialists (1, 2) can access any ticket. Technicians (3) are
+    scoped to their own site — matching the filtering already applied on the
+    /tickets list route — so a Technician can't reach another site's ticket
+    just by guessing/incrementing the ticket_id in the URL. Everyone else may
+    only access tickets they created or are assigned to.
+    """
+    if current_user.role_id in (1, 2):
+        return True
+    if current_user.role_id == 3:
+        return ticket.site_id == current_user.site_id
+    return current_user.id == ticket.user_id or current_user.id == ticket.assigned_to_id
 
 # ****************** Forbidden Error Page *******************************
 @routes_blueprint.app_errorhandler(403)
@@ -159,7 +181,7 @@ def forbidden_error(error):
 
 # ****************** Login Page *******************************
 @routes_blueprint.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute", key_func=get_remote_address)
+@limiter.limit("10 per minute", key_func=get_remote_address)
 def login():
     """
     Handle user login requests.
@@ -176,44 +198,47 @@ def login():
 
     _MAX_ATTEMPTS = 5
     _LOCKOUT_MINUTES = 15
+    _GENERIC_FAILURE = 'Login failed. Please check your credentials.'
 
     form = LoginForm()
     if form.validate_on_submit():
         _key = current_app.config['SECRET_KEY']
         user = User.query.filter_by(email_hash=hash_email(form.email.data, _key)).first()
 
-        # Check lockout before verifying the password
-        if user and user.locked_until and user.locked_until > datetime.now(timezone.utc).replace(tzinfo=None):
-            remaining = int((user.locked_until - datetime.now(timezone.utc).replace(tzinfo=None)).total_seconds() // 60) + 1
-            flash(f'Account locked. Try again in {remaining} minute(s).', 'danger')
-            return render_template('login.html', form=form, organization_name=organization_name)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        locked = bool(user and user.locked_until and user.locked_until > now)
 
-        if user and check_password_hash(user.password, form.password.data):
-            if user.status != 'Active':
-                flash('Your account is inactive. Please contact your administrator.', 'danger')
-            else:
-                # Successful login — reset lockout counters
+        # Always run a hash comparison, even for a non-existent account or a
+        # locked one, so response time doesn't reveal which case occurred
+        # (account enumeration via timing side-channel).
+        password_ok = check_password_hash(
+            user.password if user else _DUMMY_PASSWORD_HASH, form.password.data
+        )
+
+        if user and not locked and password_ok and user.status == 'Active':
+            # Successful login — reset lockout counters
+            user.failed_login_attempts = 0
+            user.locked_until = None
+            db.session.commit()
+            session.clear()
+            session.permanent = True  # enforce PERMANENT_SESSION_LIFETIME
+            login_user(user)
+            if user.must_change_password:
+                return redirect(url_for('routes.set_password'))
+            return redirect(url_for('routes.index'))
+
+        # Every other outcome (no such user, wrong password, inactive, locked)
+        # gets the same generic message so the response can't be used to
+        # enumerate which accounts exist or their current lock state.
+        # Only a genuinely wrong password counts toward the lockout counter —
+        # a correct password on a merely-inactive account isn't a guess.
+        if user and not locked and not password_ok:
+            user.failed_login_attempts += 1
+            if user.failed_login_attempts >= _MAX_ATTEMPTS:
+                user.locked_until = now + timedelta(minutes=_LOCKOUT_MINUTES)
                 user.failed_login_attempts = 0
-                user.locked_until = None
-                db.session.commit()
-                session.clear()
-                session.permanent = True  # enforce PERMANENT_SESSION_LIFETIME
-                login_user(user)
-                if user.must_change_password:
-                    return redirect(url_for('routes.set_password'))
-                return redirect(url_for('routes.index'))
-        else:
-            # Failed attempt — increment counter and lock if threshold reached
-            if user:
-                user.failed_login_attempts += 1
-                if user.failed_login_attempts >= _MAX_ATTEMPTS:
-                    user.locked_until = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=_LOCKOUT_MINUTES)
-                    user.failed_login_attempts = 0
-                    db.session.commit()
-                    flash(f'Too many failed attempts. Account locked for {_LOCKOUT_MINUTES} minutes.', 'danger')
-                    return render_template('login.html', form=form, organization_name=organization_name)
-                db.session.commit()
-            flash('Login failed. Please check your credentials.', 'danger')
+            db.session.commit()
+        flash(_GENERIC_FAILURE, 'danger')
 
     return render_template(
         'login.html',
@@ -353,6 +378,7 @@ def email_config():
 
 # ****************** Test Email *******************************
 @routes_blueprint.route('/email-config/test', methods=['POST'])
+@limiter.limit("10 per minute", key_func=get_remote_address)
 @login_required
 def test_email():
     """
@@ -695,11 +721,28 @@ def edit_user(user_id):
     if not (current_user.is_admin or current_user.is_tech_role):
         abort(403)
     user = User.query.get_or_404(user_id)
+
+    # Tech-role (non-admin) staff may only manage non-admin users at their own site.
+    # Without this, any Specialist/Technician could edit an Admin account or a user
+    # at another site — see security audit finding C1.
+    if not current_user.is_admin and (user.role_id == 1 or user.site_id != current_user.site_id):
+        abort(403)
+
     form = UserForm(obj=user)
-    # Populate dynamic choices for role_id and site_id
-    form.role_id.choices = [(role.id, role.role_name) for role in Role.query.all()]
-    form.site_id.choices = [(site.id, site.site_name) for site in Site.query.all()]
+    # Populate dynamic choices for role_id and site_id — tech-role staff never get
+    # the Admin role or other sites as options, and the choice is re-validated
+    # below regardless of what the client actually submits.
+    if current_user.is_admin:
+        form.role_id.choices = [(role.id, role.role_name) for role in Role.query.all()]
+        form.site_id.choices = [(site.id, site.site_name) for site in Site.query.all()]
+    else:
+        form.role_id.choices = [(role.id, role.role_name) for role in Role.query.filter(Role.id != 1)]
+        form.site_id.choices = [(current_user.site_id, current_user.site.site_name)]
+
     if form.validate_on_submit():
+        # Defense in depth: never trust the coerced form value alone.
+        if not current_user.is_admin and (form.role_id.data == 1 or form.site_id.data != current_user.site_id):
+            abort(403)
         # Check if a user with the same email already exists
         _key = current_app.config['SECRET_KEY']
         existing_user = User.query.filter(
@@ -767,6 +810,15 @@ def edit_user(user_id):
 def delete_user(user_id):
     is_admin()  # Ensure only admins can access this route
     user = User.query.get_or_404(user_id)
+
+    if user.id == current_user.id:
+        flash("You can't delete your own account while logged in.", 'danger')
+        return redirect(url_for('routes.users'))
+
+    if user.role_id == 1 and User.query.filter_by(role_id=1).count() <= 1:
+        flash('Cannot delete the last remaining Admin account.', 'danger')
+        return redirect(url_for('routes.users'))
+
     db.session.delete(user)
     db.session.commit()
     flash('User deleted successfully!', 'warning')
@@ -1085,6 +1137,14 @@ def ftp_save_settings():
         flash('FTP settings and schedule saved.', 'success')
     else:
         flash('FTP settings saved. Schedule disabled.', 'success')
+
+    if not org.ftp_use_tls:
+        flash(
+            'Warning: FTPS ("Use TLS") is disabled. Plain FTP transmits credentials '
+            'and student/staff data in cleartext over the network. Enable "Use TLS" '
+            'unless this connection is on a fully trusted private network.',
+            'warning'
+        )
 
     return redirect(url_for('routes.upload_users') + '?tab=ftp')
 
@@ -1937,10 +1997,7 @@ def download_attachment(attachment_id):
     attachment = Ticket_attachment.query.get_or_404(attachment_id)
     ticket = Ticket.query.get_or_404(attachment.ticket_id)
 
-    # Only allow: admins/tech roles, the ticket creator, or the assigned user
-    if (current_user.role_id not in [1, 2, 3]
-            and current_user.id != ticket.user_id
-            and current_user.id != ticket.assigned_to_id):
+    if not can_access_ticket(ticket):
         abort(403)
 
     filename = attachment.attach_image.split('/')[-1]
@@ -1965,17 +2022,14 @@ def delete_attachment(attachment_id):
     attachment = db.session.get(Ticket_attachment, attachment_id)
     if not attachment:
         flash('Attachment not found.', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    
+        return redirect(url_for('routes.index'))
+
     # Get ticket id for redirect
     ticket_id = attachment.ticket_id
-    
-    # Check permissions (admin, ticket owner, attachment uploader, or assigned user)
+
+    # Check permissions (site-scoped access, or whoever uploaded the attachment)
     ticket = db.session.get(Ticket, ticket_id)
-    if not (current_user.role_id in [1, 2, 3] or 
-            current_user.id == ticket.user_id or
-            current_user.id == attachment.user_id or
-            current_user.id == ticket.assigned_to_id):
+    if not (can_access_ticket(ticket) or current_user.id == attachment.user_id):
         flash('You do not have permission to delete this attachment.', 'danger')
         return redirect(url_for('routes.edit_ticket', ticket_id=ticket_id))
     
@@ -2022,7 +2076,7 @@ def edit_ticket(ticket_id):
     ticket = Ticket.query.options(db.joinedload(Ticket.contents)).get_or_404(ticket_id)
 
     # Permission check
-    if current_user.role_id not in [1, 2, 3] and current_user.id != ticket.user_id:
+    if not can_access_ticket(ticket):
         flash('You do not have permission to edit this ticket.', 'danger')
         return redirect(url_for('routes.tickets'))
 
@@ -2152,11 +2206,12 @@ def edit_ticket(ticket_id):
 
 # ****************** Add Comment (AJAX) *******************************
 @routes_blueprint.route('/add_comment/<int:ticket_id>', methods=['POST'])
+@limiter.limit("20 per minute", key_func=get_remote_address)
 @login_required
 def add_comment(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
 
-    if current_user.role_id not in [1, 2, 3] and current_user.id != ticket.user_id:
+    if not can_access_ticket(ticket):
         return jsonify({'success': False, 'message': 'Permission denied'}), 403
 
     content = request.form.get('content', '').strip()

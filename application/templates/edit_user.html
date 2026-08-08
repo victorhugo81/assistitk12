@@ -118,7 +118,7 @@
 
                 </form>
 
-<script>
+<script nonce="{{ g.csp_nonce }}">
 document.getElementById('sendTempPasswordBtn').addEventListener('click', function () {
     const btn = this;
     window.showDeleteConfirm(

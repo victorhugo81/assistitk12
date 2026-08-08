@@ -25,7 +25,9 @@ class Config:
     # Sessions expire after 8 hours of inactivity
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
 
-    # Session cookie security
+    # Session cookie security — secure by default; DevelopmentConfig opts out
+    # explicitly so local HTTP testing still works.
+    SESSION_COOKIE_SECURE = True     # Only send over HTTPS
     SESSION_COOKIE_HTTPONLY = True   # Prevent JavaScript access to session cookie
     SESSION_COOKIE_SAMESITE = 'Lax' # Block cross-site request sending of cookie
 
@@ -42,21 +44,22 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    DEBUG = True  # Enable debug mode for development
+    DEBUG = True                   # Enable debug mode for development
+    SESSION_COOKIE_SECURE = False   # Allow HTTP cookies in local development only
 
 class ProductionConfig(Config):
     DEBUG = False  # Disable debug mode for production
-
-    # Secure session cookies in production
-    SESSION_COOKIE_SECURE = True      # Only sent over HTTPS
-    SESSION_COOKIE_HTTPONLY = True    # Inaccessible to JavaScript
-    SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF mitigation
+    # SESSION_COOKIE_SECURE, SESSION_COOKIE_HTTPONLY, SESSION_COOKIE_SAMESITE all
+    # default to secure values in the base Config class.
 
 # Dictionary to manage different configurations for different environments
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
-    'default': DevelopmentConfig,
+    # Secure by default: an omitted/unset config name must never silently fall
+    # back to debug mode. Local development must opt in explicitly via
+    # create_app('development') or FLASK_CONFIG=development.
+    'default': ProductionConfig,
     'testing': DevelopmentConfig,  # overridden by conftest
 }
 
