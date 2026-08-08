@@ -455,14 +455,14 @@ def index():
 
     # Query to get the top 5 most popular titles with filters applied
     top_titles_query = (
-        db.session.query(Title.title_name,func.count(Ticket.id).label('ticket_count'))
+        db.session.query(Title.id, Title.title_name, func.count(Ticket.id).label('ticket_count'))
         .join(Ticket, Title.id == Ticket.title_id).filter(*query_filter)  # Apply the filters
-        .group_by(Title.title_name).order_by(func.count(Ticket.id).desc()).limit(5).all())
+        .group_by(Title.id, Title.title_name).order_by(func.count(Ticket.id).desc()).limit(5).all())
 
     # Add an index to the top_titles data
     top_titles = [
-        {"rank": idx + 1, "title_name": title_name, "ticket_count": ticket_count}
-        for idx, (title_name, ticket_count) in enumerate(top_titles_query)
+        {"rank": idx + 1, "title_id": title_id, "title_name": title_name, "ticket_count": ticket_count}
+        for idx, (title_id, title_name, ticket_count) in enumerate(top_titles_query)
     ]
 
     # Initialize counts for all 12 months
@@ -1726,6 +1726,7 @@ def tickets():
     site_filter = request.args.get('site_filter', '')
     status_filter = request.args.get('status_filter', '').strip()
     assigned_user_filter = request.args.get('assigned_user_filter', '')
+    category_filter = request.args.get('category_filter', '')
 
     # Fetch the current user's role and site information
     current_user_role_id = current_user.role_id  
@@ -1755,6 +1756,13 @@ def tickets():
     if assigned_user_filter:
         try:
             query = query.filter(Ticket.assigned_to_id == int(assigned_user_filter))
+        except ValueError:
+            pass
+
+    # Apply category (ticket title) filter
+    if category_filter:
+        try:
+            query = query.filter(Ticket.title_id == int(category_filter))
         except ValueError:
             pass
 
@@ -1798,6 +1806,9 @@ def tickets():
     # Fetch only users with role_id 1 (admin) or 2 (specialist) for assigned user filter - tickets.html
     assigned_users = User.query.filter(User.role_id.in_([1, 2, 3])).order_by(User.first_name).all()
 
+    # Fetch ticket titles for the category filter - tickets.html
+    categories = Title.query.order_by(Title.title_name).all()
+
     # Pagination setup - tickets.html
     pagination = Pagination(page=page, per_page=per_page, total=total, css_framework='bootstrap5')
 
@@ -1811,7 +1822,8 @@ def tickets():
         current_page_name=current_page_name,
         statuses=status_choices,
         sites=sites,
-        assigned_users=assigned_users  # Pass filtered users
+        assigned_users=assigned_users,  # Pass filtered users
+        categories=categories
     )
 
 

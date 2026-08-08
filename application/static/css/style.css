@@ -707,7 +707,25 @@ a.user-welcome:hover { color: var(--color-primary); text-decoration: none; }
 .table td .progress .progress-bar { height: 4px; background-color: var(--color-primary); }
 
 .table tbody tr { transition: background-color 0.12s ease; }
-.table-highlight-row:hover { background-color: var(--color-primary-tint) !important; }
+/* Bootstrap 5.3 paints cell backgrounds (including .table-striped's odd
+   rows) via an inset box-shadow on each <td>/<th> driven by the
+   --bs-table-bg-state/-type/-accent-bg chain, which sits on top of and
+   masks a plain background-color set on the <tr>. Setting the actual
+   --bs-table-bg-state variable (inherited down to the cells) is what
+   Bootstrap's own .table-hover does, and it's the only way to reliably
+   win over striping. */
+.table-highlight-row:hover {
+  --bs-table-bg-state: var(--color-primary);
+  background-color: var(--color-primary) !important;
+}
+.table-highlight-row:hover td,
+.table-highlight-row:hover th,
+.table-highlight-row:hover h6,
+.table-highlight-row:hover span,
+.table-highlight-row:hover p,
+.table-highlight-row:hover a:not(.btn) {
+  color: #fff !important;
+}
 
 /* ==========================================================================
    FORMS

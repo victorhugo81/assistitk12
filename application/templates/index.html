@@ -195,8 +195,11 @@
                       </thead>
                       <tbody>
                           {% for title in top_titles %}
-                          <tr>
-                              <td class="dashboard-table">{{ title.title_name[:25] }}</td>
+                          <tr class="table-highlight-row">
+                              <td class="dashboard-table">
+                                <a href="{{ url_for('routes.tickets', category_filter=title.title_id) }}"
+                                   title="View {{ title.title_name }} tickets">{{ title.title_name[:25] }}</a>
+                              </td>
                               <td class="text-end text-align-center">{{ title.ticket_count }}</td>
                           </tr>
                           {% endfor %}

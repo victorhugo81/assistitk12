@@ -23,6 +23,9 @@
             <form method="get" class="d-flex">
               <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
               <input type="hidden" name="role_filter" value="{{ request.args.get('role_filter', '') }}">
+              <input type="hidden" name="status_filter" value="{{ request.args.get('status_filter', '') }}">
+              <input type="hidden" name="assigned_user_filter" value="{{ request.args.get('assigned_user_filter', '') }}">
+              <input type="hidden" name="category_filter" value="{{ request.args.get('category_filter', '') }}">
               <select name="site_filter" class="form-select-box form-select" onchange="this.form.submit()">
                   <option value="">All Sites</option>
                   {% for site in sites %}
@@ -34,11 +37,13 @@
           </form>
           </div>
           <div class="col">
-            <label for="site_filter" class="filter-labels text-sm mb-0 text-capitalize">Filter By Status</label>
+            <label for="status_filter" class="filter-labels text-sm mb-0 text-capitalize">Filter By Status</label>
             <form method="get" class="d-flex">
               <!-- Retain other filter values in hidden inputs -->
               <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
               <input type="hidden" name="site_filter" value="{{ request.args.get('site_filter', '') }}">
+              <input type="hidden" name="assigned_user_filter" value="{{ request.args.get('assigned_user_filter', '') }}">
+              <input type="hidden" name="category_filter" value="{{ request.args.get('category_filter', '') }}">
               <select name="status_filter" class="form-select-box form-select" onchange="this.form.submit()">
                 <option value="">All Statuses</option>
                 {% for raw, display in statuses %}
@@ -47,11 +52,12 @@
                     </option>
                 {% endfor %}
             </select>
-            
+
           </form>
           </div>
       </div>
 
+      <div class="row justify-content-between mb-4">
       <div class="col">
         <label for="assigned_user_filter" class="filter-labels text-sm text-capitalize">Filter By Assigned User</label>
         <form method="get" class="d-flex mb-4">
@@ -59,7 +65,8 @@
             <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
             <input type="hidden" name="site_filter" value="{{ request.args.get('site_filter', '') }}">
             <input type="hidden" name="status_filter" value="{{ request.args.get('status_filter', '') }}">
-    
+            <input type="hidden" name="category_filter" value="{{ request.args.get('category_filter', '') }}">
+
             <select name="assigned_user_filter" class="form-select-box form-select" onchange="this.form.submit()">
                 <option value="">All Users</option>
                 {% for user in assigned_users %}
@@ -70,8 +77,28 @@
             </select>
         </form>
     </div>
-    
-    
+
+      <div class="col">
+        <label for="category_filter" class="filter-labels text-sm text-capitalize">Filter By Category</label>
+        <form method="get" class="d-flex mb-4">
+            <!-- Retain other filter values -->
+            <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
+            <input type="hidden" name="site_filter" value="{{ request.args.get('site_filter', '') }}">
+            <input type="hidden" name="status_filter" value="{{ request.args.get('status_filter', '') }}">
+            <input type="hidden" name="assigned_user_filter" value="{{ request.args.get('assigned_user_filter', '') }}">
+
+            <select name="category_filter" class="form-select-box form-select" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                {% for category in categories %}
+                    <option value="{{ category.id }}" {% if request.args.get('category_filter', '')|int == category.id %}selected{% endif %}>
+                        {{ category.title_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+      </div>
+    </div>
+
   </div>
 <!-- end search box card -->
 
