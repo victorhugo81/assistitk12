@@ -1,116 +1,113 @@
-# CLAUDE.md
-
+CLAUDE.md
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project
+What This App Is
+AnalyticsK12 is a K-12 school district analytics platform. It manages student demographics, attendance (absences), discipline (incidents), staffing (teachers, courses), and family contacts (parents) across multiple school sites. It includes role-based access control, bulk CSV import, encrypted credentials, and session-based global filters (school year, site, snap date, student status).
 
-AssistITK12 is a Flask-based IT ticketing system for K-12 school districts. It supports multi-role access (Admin, Specialist, Technician, Teacher), encrypted email storage, SMTP notifications, FTP scheduling, and bulk user imports.
+Running the App
+# Run dev server
+uv run flask --app main.py run
 
-## Commands
-
-**Run dev server:**
-```bash
+# Or activate the venv and use flask directly
+source .venv/bin/activate
 flask --app main.py run
-```
+Dependencies are managed with uv. To add or sync packages:
 
-**Run all tests:**
-```bash
-uv run pytest
-```
-
-**Run a single test file:**
-```bash
-uv run pytest tests/test_auth.py
-```
-
-**Run a single test by name:**
-```bash
-uv run pytest tests/test_auth.py::test_login_success
-```
-
-**Sync dependencies:**
-```bash
 uv sync
-```
+uv add <package>
+Database
+MySQL via PyMySQL. Connection string is in .env as DATABASE_URL.
 
-**Run database migrations:**
-```bash
-flask db upgrade
-```
+# Apply all pending migrations
+flask --app main.py db upgrade
 
-**Generate a new migration after model changes:**
-```bash
-flask db migrate -m "describe the change"
-```
+# Generate a new migration after model changes
+flask --app main.py db migrate -m "description"
 
-## Architecture
+# Check current migration version
+flask --app main.py db current
+Migration files live in migrations/versions/. After adding or changing a model, always run migrate then upgrade.
 
-### App Factory
+Seeding Data
+# 1. Create MySQL DB and write .env (interactive)
+python installation/create_env.py
 
-The canonical app factory is `create_app()` in [main.py](main.py). All Flask extensions (`db`, `login_manager`, `csrf`, `mail`, `limiter`, `scheduler`) are initialized there as module-level globals and re-used across the app. Models import `db` from `main`, not from `application`.
+# 2. Seed roles, default site, admin user (interactive)
+python installation/seed_data.py
 
-`application/__init__.py` is intentionally minimal — it only declares stub `db` and `login_manager` instances that are not used by the running application. Do not add a `create_app()` there; it would bypass all security middleware (CSRF, rate limiting, security headers, scheduler).
+# 3. Seed academic demo data (sites, students, teachers, courses, parents, absences, incidents)
+python installation/seed_academic_data.py
+Architecture
+App Factory
+main.py contains create_app(config_name). It initializes Flask extensions (SQLAlchemy, Flask-Login, CSRF, Flask-Mail, Flask-Limiter, APScheduler), registers the single blueprint, applies security headers, and wires database-stored SMTP config from the Organization model.
 
-### Configuration
+Single Blueprint
+All routes live in application/routes.py under one blueprint (routes_blueprint). The file is large (~2700+ lines) and organized into labeled sections:
 
-[config.py](config.py) defines `DevelopmentConfig`, `ProductionConfig`, and a `config` dict. The active config is selected by passing `config_name` to `create_app()`. The environment defaults to `development`. Tests inject their own `TestingConfig` via `conftest.py`.
+Auth — login, logout, set-password, account lockout
+Users / Roles / Sites / Notifications / Organization — admin management
+Global session filters — /set_school_year, /set_site_filter, /set_snap_date, /set_status_filter (store to session, redirect back)
+Context processor — injects active_schoolyr, active_site_filter, active_snap_date, active_status_filter, global_sites, global_school_years into every template
+Students — list (paginated, multi-filter), detail, edit, export CSV (/students/export/csv)
+Demographics dashboard — /demographics (charts + tables)
+SWD dashboard — /swd
+Absences — /absences/dashboard, /absences (list)
+Discipline dashboard — /discipline
+Incidents — /incidents (list)
+Teachers / Courses / Parents — list + detail + edit
+Models (application/models.py)
+Key models and their notable fields:
 
-Key env vars: `SECRET_KEY`, `DATABASE_URL` (MySQL in production, SQLite fallback for dev), `RATELIMIT_STORAGE_URI` (Redis required in production).
+Model	Notes
+Student	status is a computed @property from enter_date/exit_date — there is no status column in DB
+User	Email stored encrypted (cryptography.fernet); password hashed with scrypt
+Organization	Stores SMTP and FTP config with encrypted passwords; config overrides app.config at startup
+Absence	Linked to student via ssid string (not FK), site via site_id FK
+Incident	Linked to student via sisid string (not FK); site is stored as the site acronym string
+Site	Has both site_name and site_acronyms — dashboards use acronyms for compact display
+Global Session Filters
+The context processor reads these four session keys and injects them into every template:
 
-### Routing
+active_schoolyr — school year string (e.g. "2025-2026")
+active_site_filter — site ID as string
+active_snap_date — ISO date string for enrollment-as-of queries
+active_status_filter — "active" | "inactive" | "all"
+Routes that support site filtering from the URL (e.g. dashboard table links) check request.args.get('site_filter') first, then fall back to session.
 
-All routes live in a single Blueprint (`routes_blueprint`) registered in [application/routes.py](application/routes.py). There is no sub-blueprint structure. Routes are organized by comment blocks within the single file.
+Student Subgroup Filtering
+/students supports multi-select subgroup filtering via repeated ?subgroup= URL params (getlist). The route applies AND logic across all selected subgroups. Supported values: homeless, frm, swd, foster, migrant, sed504, no_ssid.
 
-### Models
+English status and gender use single-value URL params (english_status, gender).
 
-Defined in [application/models.py](application/models.py). Key relationships:
-- `User` → belongs to `Role` and `Site`
-- `Ticket` → created by a `User`, optionally assigned to another `User`, belongs to a `Site` and `Title`
-- `Ticket_content` — comments on a ticket
-- `Ticket_attachment` — file attachments
-- `Organization` (id=1 only) — stores org settings, SMTP config (encrypted), and FTP schedule config
-- `BulkUploadLog` — audit trail for CSV user imports
+Templates
+application/templates/base.html — main layout; includes includes/nav.html
+application/templates/includes/nav.html — sidebar nav + top navbar with global filter bar
+application/templates/dashboard/ — analytics dashboards (demographics, swd, discipline, absenteeism)
+Chart rendering uses Chart.js loaded from static/js/plugins/chartjs.min.js
+Print/PDF export uses a printDashboard() JS function that swaps canvas elements for images and applies a zoom factor
+CSS / Print
+application/static/css/dashboards.css contains shared dashboard styles including .demo-kpi, .chart-card, .chart-wrap and @media print rules for all dashboards.
 
-### Encrypted Fields
+Key Conventions
+site_filter parameter: In the students route, URL param site_filter overrides session. In all other routes it comes from session only.
+Ethnicity codes: Stored as 3-digit strings ('500' = Hispanic/Latino, '600' = African American, etc.). The ethnicity_table_data variable is always a list of (code, label, count) tuples.
+Add pages removed: add_student, add_teacher, add_course, add_parent routes redirect to their list pages — the templates were intentionally deleted.
+student.status: Never filter with Student.status == 'Active' in SQL — it's a Python property. Use enter_date/exit_date conditions instead.
 
-User emails are **never stored in plain text**. Two columns exist on `User`:
-- `email_enc` — Fernet-encrypted email
-- `email_hash` — HMAC-SHA256 of the normalized email (used for lookup and uniqueness)
+Frontend Visual Design System
+The UI was redesigned from a gradient-heavy "admin template" look to a flat, bordered, editorial style. Everything lives in application/static/css/style.css as CSS custom properties — there is no build step or preprocessor.
 
-The `User.email` property transparently encrypts/decrypts using `SECRET_KEY`. Always query users by `email_hash` (via `hash_email()` from [application/utils.py](application/utils.py)), never by `email_enc`.
+Design tokens (:root in style.css)
+color-primary (#153448, fixed brand navy), color-secondary (slate), color-accent (terracotta, used sparingly for CTAs/active states), plus color-success/-warning/-danger/-info and neutral color-bg/-surface/-border/-border-strong/-text/-text-muted. Bootstrap's own bs-primary, bs-success, bs-warning, etc. are re-pointed at these so stock bg-success, badge, alert, and form-validation colors stay in sync without touching template markup.
+radius scale is restrained (radius-sm 5px to radius-xl 14px) — avoid introducing new pill-shaped elements outside badges/switches.
+shadow is used only for overlays (dropdowns, modals, the login card); flat surfaces get a 1px border instead of a shadow.
+Inter is the only typeface, with a real weight/size hierarchy defined near the top of the file (space scale, h1 to h6 rules).
 
-SMTP passwords and FTP credentials stored in `Organization` are also Fernet-encrypted using the same key.
+Component conventions
+Buttons (.btn and variants) always carry a visible border in a matching darker shade — never a borderless flat fill — per the accessibility pass.
+Page headers: templates still use the original markup classes (.custom-title-card, or .bg-gradient-main.shadow-dark.border-radius-lg on add/edit forms) — these are intentionally not gradient banners anymore. They are flattened entirely in CSS via compound selectors so the 20+ CRUD templates didn't need markup changes. If you add a new list/form page, reuse the same class pair rather than inventing a new header style.
+Cards and tables are bordered, not shadowed; table headers use a light sunken background, not a solid dark fill.
+Focus states use a global :focus-visible outline in the accent color — don't suppress it with outline: none on new interactive elements.
 
-### Roles
-
-Fixed role IDs: Admin=1, Specialist=2, Technician=3, Teacher=4. Role-based access is checked via `current_user.is_admin` and `current_user.is_tech_role` properties on `User`.
-
-### Email Notifications
-
-Outgoing mail is handled in [application/email_utils.py](application/email_utils.py). SMTP settings are loaded from the `Organization` row on every app startup and override `.env` defaults (see `create_app()` in [main.py](main.py)).
-
-### Scheduled Jobs
-
-[application/scheduled_jobs.py](application/scheduled_jobs.py) contains the FTP transfer task. The APScheduler job (`org_ftp_schedule`) is registered/removed at startup based on `Organization.ftp_schedule_enabled`. Scheduler config is set in `main.py`; the REST API is disabled (`SCHEDULER_API_ENABLED = False`).
-
-### Tests
-
-Tests use SQLite in-memory with CSRF and rate limiting disabled. The session-scoped `app` fixture in [tests/conftest.py](tests/conftest.py) seeds a minimal dataset (roles, one site, one org, one admin, one teacher). Pre-authenticated clients (`admin_client`, `user_client`) inject the session directly without going through the login form.
-
-## Security Invariants
-
-These constraints must be preserved when modifying bulk import or user management code:
-
-**Bulk CSV imports (manual and FTP, including the scheduled job)**
-- `role_id` from CSV must be validated against the live `Role` table before any DB write. The validation pre-fetches `valid_role_ids` once per import, not per row.
-- Admin accounts (`role_id=1`) must be excluded from the deactivation query/loop so a CSV that omits an admin cannot lock them out.
-- Email addresses must be normalized to lowercase before hashing: `row['email'].strip().lower()`.
-
-**Session cookies**
-- `SESSION_COOKIE_SECURE = True` is set in the base `Config` class. `DevelopmentConfig` overrides it to `False` for local HTTP. Never remove the base-class default.
-
-**Encrypted fields**
-- `SECRET_KEY` is the single master key for Fernet encryption (emails, SMTP passwords, FTP credentials) and HMAC email hashes. Rotating `SECRET_KEY` without first re-encrypting all `email_enc` and `mail_password` rows will make all stored PII permanently unreadable. Any key-rotation work requires a migration script run before the key change.
-
-**Access control helpers**
-- `is_admin()` and `is_tech_role()` in [application/routes.py](application/routes.py) call `abort(403)` — they are not decorators. They must be called as the first statement inside the route function body (before any DB access) so that an early `abort` cannot be bypassed by later code.
+Navigation (application/templates/includes/nav.html)
+The sidebar is a flush, full-height, dark-navy panel, not a floating white card. Active links get a left accent border, not a filled pill — set via a plain active class in the Jinja conditional, not bg-gradient-main text-white. The top bar's navbar-collapse has no real Bootstrap toggler anywhere in the markup, so ".navbar-main .navbar-collapse { display: flex !important }" in style.css keeps the mobile hamburger and user info visible at every breakpoint — don't remove that rule or mobile nav disappears.

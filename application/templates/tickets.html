@@ -154,10 +154,10 @@
           </span>
         </td>
         <td>
-          <span class="badge 
-            {% if ticket.tck_status[2:] == 'pending' %} bg-success 
-            {% elif ticket.tck_status[2:] == 'progress' %} bg-warning 
-            {% else %} bg-danger {% endif %}">
+          <span class="badge
+            {% if ticket.tck_status[2:] == 'pending' %} bg-warning
+            {% elif ticket.tck_status[2:] == 'progress' %} bg-info
+            {% else %} bg-success {% endif %}">
             {{ ticket.tck_status[2:] | capitalize }}
           </span>
         </td>

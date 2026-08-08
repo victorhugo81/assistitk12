@@ -62,11 +62,11 @@
             <span class="text-white">General Settings</span></h3>
             <form method="POST" action="{{ url_for('routes.organization', organization_id=organization.id) }}">
               {{ form.csrf_token }}
-                <div class="input-group input-group-outline my-3  pt-4">
-                    {{ form.organization_name.label }}
+                <div class="mb-3 pt-4">
+                    {{ form.organization_name.label(class="form-label") }}
                     {{ form.organization_name(class="form-control") }}
                 </div>
-                <div class="input-group input-group-outline my-3">
+                <div class="mb-3">
                     {{ form.site_version.label(class="form-label") }}
                     {{ form.site_version(class="form-control") }}
                 </div>
@@ -91,34 +91,34 @@
               {{ email_form.csrf_token }}
                 <div class="row">
                     <div class="col-md-8">
-                        <div class="input-group input-group-outline my-3">
-                            {{ email_form.mail_server.label }}
+                        <div class="mb-3">
+                            {{ email_form.mail_server.label(class="form-label") }}
                             {{ email_form.mail_server(class="form-control", placeholder="e.g. smtp.gmail.com") }}
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="input-group input-group-outline my-3">
-                            {{ email_form.mail_port.label }}
+                        <div class="mb-3">
+                            {{ email_form.mail_port.label(class="form-label") }}
                             {{ email_form.mail_port(class="form-control", placeholder="e.g. 587 or 465") }}
                         </div>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="input-group input-group-outline my-3">
-                            {{ email_form.mail_username.label }}
+                        <div class="mb-3">
+                            {{ email_form.mail_username.label(class="form-label") }}
                             {{ email_form.mail_username(class="form-control", placeholder="sender@example.com") }}
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="input-group input-group-outline my-3">
-                            {{ email_form.mail_password.label }}
+                        <div class="mb-3">
+                            {{ email_form.mail_password.label(class="form-label") }}
                             {{ email_form.mail_password(class="form-control", placeholder="Leave blank to keep existing password") }}
                         </div>
                     </div>
                 </div>
-                <div class="input-group input-group-outline my-3">
-                    {{ email_form.mail_default_sender.label }}
+                <div class="mb-3">
+                    {{ email_form.mail_default_sender.label(class="form-label") }}
                     {{ email_form.mail_default_sender(class="form-control", placeholder="sender@example.com") }}
                 </div>
                 <div class="d-flex gap-4 my-3">
@@ -150,14 +150,12 @@
             <h3 class="bg-gradient-main custom-title-card px-3">
             <span class="text-white">Send Test Email</h3>
             <p class="text-sm text-muted mb-3 pt-4">Verify your SMTP configuration by sending a test email.</p>
-            <div class="row align-items-end">
+            <div class="row">
                 <div class="col-md-8">
-                    <div class="input-group input-group-outline my-3">
-                        <label class="form-label">Recipient Email</label>
+                    <div class="mb-3">
+                        <label class="form-label" for="testRecipient">Recipient Email</label>
                         <input type="email" id="testRecipient" class="form-control " placeholder="recipient@example.com">
                     </div>
-                </div>
-                <div class="col-md-auto mb-3">
                     <button type="button" class="btn bg-gradient-main add-table-button shadow-dark" id="sendTestEmail">Send Test Email</button>
                 </div>
             </div>

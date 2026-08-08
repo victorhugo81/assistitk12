@@ -24,6 +24,17 @@ AssistITK12 is a web-based ticketing system designed to help school districts ma
 - **Login Lockout**: Accounts are automatically locked after repeated failed login attempts.
 - **Encrypted User Emails**: User email addresses are stored encrypted in the database.
 
+## Design System
+
+The interface uses a flat, bordered visual style rather than the gradient-and-shadow "admin template" look of earlier versions:
+
+- **Color** — deep navy brand primary (`#153448`) with a muted slate secondary and a terracotta accent used sparingly for calls-to-action and active states.
+- **Typography** — Inter throughout, with a deliberate size/weight hierarchy instead of uniform bold headings.
+- **Components** — bordered buttons, cards, and inputs instead of drop shadows; flat page headers instead of gradient banners; a solid dark-navy sidebar with a left-border active indicator instead of a filled pill.
+- **Accessibility** — visible focus rings on every interactive element, borders on all buttons/inputs for non-text contrast, and tinted (not solid-fill) alert boxes for readable status messages.
+
+All of it lives in `application/static/css/style.css` as CSS custom properties — no build step or CSS preprocessor is required.
+
 ## Application Versions
 
 - **Python 3.13+**
