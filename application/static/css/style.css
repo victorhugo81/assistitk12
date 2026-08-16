@@ -9,15 +9,15 @@
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
+/* #12707F */
 :root,
 [data-bs-theme=light] {
   /* ── Brand (primary is fixed — do not change) ── */
-  --bs-main-color-primary:  #153448;
+  --bs-main-color-primary:  #12707F;
   --bs-main-color-secondary:#475569;
 
-  --color-primary:       #153448;
-  --color-primary-dark:  #0C222F;
+  --color-primary:       #12707F;
+  --color-primary-dark:  #0e535d;
   --color-primary-tint:  #EAEFF2;
   --color-secondary:     #475569;
   --color-secondary-dark:#334155;
@@ -50,6 +50,7 @@
   --color-text:          #17212B;
   --color-text-muted:    #4C5C68;
   --color-text-subtle:   #71828D;
+  --color-text-on-dark:  #ffffff;
   --input-color-border:  var(--color-border-strong);
 
   /* ── Sidebar (dark surface) ── */
@@ -523,7 +524,9 @@ a.user-welcome:hover { color: var(--color-primary); text-decoration: none; }
   display: flex;
   flex-direction: column;
   min-width: 0;
-  max-width: 99%;
+  max-width: 97%;
+  margin-left: auto;
+  margin-right: auto;
   color: var(--color-text);
   background-color: var(--bs-card-bg);
   border: 1px solid var(--color-border);
@@ -1051,7 +1054,7 @@ hr.horizontal.dark { background-color: var(--color-border-strong); }
   align-items: center;
 }
 .navbar-vertical .navbar-brand > img,
-.navbar-vertical .navbar-brand-img { max-width: 100%; max-height: 1.9rem; }
+.navbar-vertical .navbar-brand-img { max-width: 100%; }
 
 .nav-cat-list { padding-top: 0.75rem; margin-top: 0.5rem; border-top: 1px solid var(--color-sidebar-border); }
 .nav-cat-list h6 {
@@ -1212,7 +1215,7 @@ hr.horizontal.dark { background-color: var(--color-border-strong); }
   justify-content: center;
   border-top: 4px solid var(--color-accent-on-dark);
 }
-.text-wrap .navbar-brand-img { max-height: 2.75rem; }
+.text-wrap .navbar-brand-img { max-height: 100%; }
 .text-wrap .text h2 { font-weight: 700; color: #fff; font-size: 1.5rem; }
 
 .login-wrap {
@@ -1274,14 +1277,12 @@ hr.horizontal.dark { background-color: var(--color-border-strong); }
 
 .bg-gradient-main.custom-title-card,
 .bg-gradient-main.shadow-dark.border-radius-lg {
-  background-color: transparent !important;
+  background-color: var(--bs-main-color-primary) !important;
   border-bottom: 1px solid var(--color-border);
-  border-radius: 0 !important;
+  border-radius: 10px 10px 0px 0px !important;
   padding: 1.1rem 0.25rem 1.1rem !important;
   margin-bottom: 0.5rem;
-  display: flex;
   align-items: center;
-  gap: 0.6rem;
 }
 
 .bg-gradient-main.custom-title-card h1,
@@ -1292,7 +1293,7 @@ hr.horizontal.dark { background-color: var(--color-border-strong); }
 .bg-gradient-main.shadow-dark.border-radius-lg h2,
 .bg-gradient-main.shadow-dark.border-radius-lg h3,
 .bg-gradient-main.shadow-dark.border-radius-lg .text-white {
-  color: var(--color-text) !important;
+  color: var(--color-text-on-dark) !important;
   font-size: 1.375rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -1304,14 +1305,14 @@ hr.horizontal.dark { background-color: var(--color-border-strong); }
 
 .bg-gradient-main.custom-title-card .material-symbols-rounded,
 .bg-gradient-main.shadow-dark.border-radius-lg .material-symbols-rounded {
-  color: var(--color-primary);
+  color: var(--color-text-on-dark);
   font-size: 1.25rem;
   opacity: 1 !important;
 }
 
 /* profile.html name banner + organization.html sub-section headers reuse
    the same classes at a smaller scale */
-h3.bg-gradient-main.custom-title-card .text-uppercase { color: var(--color-text) !important; font-size: 1.1rem !important; }
+h3.bg-gradient-main.custom-title-card .text-uppercase { color: var(--color-text-on-dark) !important; font-size: 1.1rem !important; }
 
 /* Back button embedded in the bulk-upload header needs its own contrast
    treatment now that the banner is no longer dark */
