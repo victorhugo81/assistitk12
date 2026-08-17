@@ -2,12 +2,45 @@
 Utility functions for the AssistITK12 application.
 Contains reusable validation and helper functions.
 """
+import os
 import re
 import hmac as _hmac
 import hashlib
 import base64
 from typing import Tuple, Optional
 from cryptography.fernet import Fernet, InvalidToken
+
+_VERSION_RE = re.compile(r'^##\s*\[(\d+\.\d+\.\d+)\]')
+_app_version_cache = None
+
+
+def get_app_version(changelog_path=None):
+    """
+    Read the current app version from CHANGELOG.md (Keep a Changelog format),
+    i.e. the version number in the first released entry — "## [X.Y.Z] - date"
+    — skipping an "## [Unreleased]" header if present. Result is cached in
+    memory after the first successful read for the life of the process.
+
+    Returns '' if the file is missing or no version line is found, rather
+    than raising, since this is used for display only (About modal).
+    """
+    global _app_version_cache
+    if _app_version_cache:
+        return _app_version_cache
+
+    if changelog_path is None:
+        changelog_path = os.path.join(os.path.dirname(__file__), '..', 'CHANGELOG.md')
+
+    try:
+        with open(changelog_path, encoding='utf-8') as f:
+            for line in f:
+                match = _VERSION_RE.match(line.strip())
+                if match:
+                    _app_version_cache = match.group(1)
+                    return _app_version_cache
+    except OSError:
+        pass
+    return ''
 
 
 def _get_fernet(secret_key: str) -> Fernet:

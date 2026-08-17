@@ -5,16 +5,49 @@
     <div class="row justify-content-end">
       <div class="col-12 text-end">
         <div class="copyright text-sm text-muted">
-          <a href="" class="font-weight-bold" target="_blank">AssistITk12</a>
-          © <script nonce="{{ g.csp_nonce }}">
-            document.write(new Date().getFullYear());
-          </script>
+          <button type="button" class="footer-about-trigger font-weight-bold"
+                  data-bs-toggle="modal" data-bs-target="#aboutModal">AssistITk12</button>
+          © <span id="copy-year"></span>
         </div>
       </div>
     </div>
   </div>
 </footer>
 
+<!-- About modal -->
+<div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header position-relative border-0 pb-0">
+        <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="w-100 text-center pt-2">
+          <img src="{{ url_for('static', filename='img/favicon.png') }}" class="about-modal-logo mb-2" alt="">
+          <h5 class="modal-title" id="aboutModalTitle">AssistITk12</h5>
+        </div>
+      </div>
+      <div class="modal-body text-center">
+        <p class="text-sm text-muted mb-3">
+          A web-based ticketing system that helps school districts manage support requests,
+          maintenance issues, and other technical problems.
+        </p>
+        {% if app_version %}
+        <p class="mb-1"><span class="about-modal-version">Version {{ app_version }}</span></p>
+        {% endif %}
+        <p class="text-xs text-muted mb-0">© <span class="copy-year"></span> AssistITk12. All rights reserved.</p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn reset-button-box btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- End About modal -->
+
+<script nonce="{{ g.csp_nonce }}">
+  document.querySelectorAll('#copy-year, .copy-year').forEach(function (el) {
+    el.textContent = new Date().getFullYear();
+  });
+</script>
 
 <!-- End footer -->
 </div>

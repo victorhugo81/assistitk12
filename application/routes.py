@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from .models import User, Role, Site, Notification, Organization, Ticket, Title, Ticket_content, Ticket_attachment, BulkUploadLog
 from .forms import LoginForm, UserForm, RoleForm, SiteForm, NotificationForm, OrganizationForm, EmailConfigForm, TicketForm, TitleForm, TicketContentForm
-from .utils import validate_password, validate_file_upload, encrypt_mail_password, decrypt_mail_password, hash_email
+from .utils import validate_password, validate_file_upload, encrypt_mail_password, decrypt_mail_password, hash_email, get_app_version
 from .email_utils import send_ticket_notification, send_temp_password_email, send_password_updated_email
 from main import db, login_manager, mail, limiter, scheduler
 from flask_mail import Message
@@ -50,6 +50,13 @@ def inject_active_notifications():
     except Exception:
         notifications = []
     return dict(active_notifications=notifications)
+
+
+@routes_blueprint.app_context_processor
+def inject_app_version():
+    """Expose the current app version (parsed from CHANGELOG.md) to every
+    template — used by the About modal in the footer."""
+    return dict(app_version=get_app_version())
 
 
 # *****************************************************************
