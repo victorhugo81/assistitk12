@@ -107,6 +107,13 @@ class Site(db.Model):
     site_cds = db.Column(db.String(100), nullable=False)
     site_code = db.Column(db.String(100), nullable=False)
     site_address = db.Column(db.String(100), nullable=False)
+    site_city = db.Column(db.String(100), nullable=True)
+    site_state = db.Column(db.String(50), nullable=True)
+    site_zip = db.Column(db.String(10), nullable=True)
+    principal_first_name = db.Column(db.String(50), nullable=True)
+    principal_last_name = db.Column(db.String(50), nullable=True)
+    principal_email = db.Column(db.String(120), nullable=True)
+    principal_phone = db.Column(db.String(20), nullable=True)
     site_type = db.Column(db.String(100), nullable=False)
     users = db.relationship('User', backref='site', lazy=True)
     tickets = db.relationship('Ticket', back_populates='site')  # Matches the relationship in Ticket

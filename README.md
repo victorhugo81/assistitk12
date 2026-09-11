@@ -1,8 +1,6 @@
 # AssistITK12
 
-<<<<<<< HEAD
 ![AssistITK12 Logo](/application/static/img/logo.png)
-=======
 
 AssistITK12 is a web-based ticketing system designed to help school districts manage support requests, maintenance issues, and other technical problems. It's built with Flask and Bootstrap to provide a user-friendly and efficient solution.
 

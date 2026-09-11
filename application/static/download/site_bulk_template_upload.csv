@@ -1,0 +1,4 @@
+site_name,site_acronyms,site_cds,site_code,site_address,sitecity,sitestate,sitezip,prnfirstn,prnlastn,email,phone,site_type
+Lincoln Elementary,LE,12-73399-1232232,001,123 Main St,Anytown,CA,12345,Alex,Rivera,a.rivera@school.edu,555-123-4567,Elementary
+Washington Middle School,WMS,12-73399-1232233,002,456 Oak Ave,Anytown,CA,12345,Jordan,Kim,j.kim@school.edu,555-123-4568,Middle
+Roosevelt High School,RHS,12-73399-1232234,003,789 Pine Rd,Anytown,CA,12345,Priya,Patel,p.patel@school.edu,555-123-4569,High

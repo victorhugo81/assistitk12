@@ -61,6 +61,40 @@
                             {{ form.site_address.label(class="form-label") }}
                             {{ form.site_address(class="form-control") }}
                         </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            {{ form.site_city.label(class="form-label") }}
+                            {{ form.site_city(class="form-control") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            {{ form.site_state.label(class="form-label") }}
+                            {{ form.site_state(class="form-control") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            {{ form.site_zip.label(class="form-label") }}
+                            {{ form.site_zip(class="form-control") }}
+                        </div>
+                    </div>
+
+                    <!-- Section: Principal / Site Contact -->
+                    <p class="text-uppercase text-sm text-muted fw-bold mb-2 mt-5">Principal / Site Contact</p>
+                    <hr class="mt-0 mb-3">
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            {{ form.principal_first_name.label(class="form-label") }}
+                            {{ form.principal_first_name(class="form-control") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            {{ form.principal_last_name.label(class="form-label") }}
+                            {{ form.principal_last_name(class="form-control") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            {{ form.principal_email.label(class="form-label") }}
+                            {{ form.principal_email(class="form-control") }}
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3">
+                            {{ form.principal_phone.label(class="form-label") }}
+                            {{ form.principal_phone(class="form-control") }}
+                        </div>
                     </div>
 
                 </form>

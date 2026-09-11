@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2026.6.0] - 2026-09-11
 - Add notification bell
 - Clean up CSS theme
+- Update site.csv fields
 
 ## [2026.5.0] - 2026-08-16
 

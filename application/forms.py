@@ -36,7 +36,14 @@ class SiteForm(FlaskForm):
     site_code = StringField('Site Code:', validators=[DataRequired()])
     site_cds = StringField('CDS Code:', validators=[DataRequired()])
     site_address = StringField('Site Address:', validators=[DataRequired()])
+    site_city = StringField('City:', validators=[Optional()])
+    site_state = StringField('State:', validators=[Optional()])
+    site_zip = StringField('Zip Code:', validators=[Optional()])
     site_type = StringField('Site Type:', validators=[DataRequired()])
+    principal_first_name = StringField('Principal First Name:', validators=[Optional()])
+    principal_last_name = StringField('Principal Last Name:', validators=[Optional()])
+    principal_email = StringField('Principal Email:', validators=[Optional(), Email()])
+    principal_phone = StringField('Principal Phone:', validators=[Optional()])
     submit = SubmitField('Save Site')
 
 

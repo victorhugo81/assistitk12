@@ -890,6 +890,18 @@ def _normalize_cds(raw):
         return raw
 
 
+# CSV column -> Site model attribute, for the optional location/principal-contact fields
+SITE_OPTIONAL_COLUMNS = {
+    'sitecity': 'site_city',
+    'sitestate': 'site_state',
+    'sitezip': 'site_zip',
+    'prnfirstn': 'principal_first_name',
+    'prnlastn': 'principal_last_name',
+    'email': 'principal_email',
+    'phone': 'principal_phone',
+}
+
+
 def _process_sites_rows(rows):
     """Upsert sites from a list of CSV dicts. Returns (added, updated). Raises ValueError on bad data."""
     added = updated = 0
@@ -907,6 +919,8 @@ def _process_sites_rows(rows):
     for row in rows:
         name = row['site_name'].strip()
         cds  = _normalize_cds(row['site_cds'])
+        optional_values = {attr: (row.get(col) or '').strip() or None
+                            for col, attr in SITE_OPTIONAL_COLUMNS.items()}
         site = site_cache.get(name)
         if site:
             site.site_acronyms = row['site_acronyms'].strip()
@@ -914,6 +928,8 @@ def _process_sites_rows(rows):
             site.site_code     = row['site_code'].strip()
             site.site_address  = row['site_address'].strip()
             site.site_type     = row['site_type'].strip()
+            for attr, value in optional_values.items():
+                setattr(site, attr, value)
             updated += 1
         else:
             new_site = Site(
@@ -923,6 +939,7 @@ def _process_sites_rows(rows):
                 site_code     = row['site_code'].strip(),
                 site_address  = row['site_address'].strip(),
                 site_type     = row['site_type'].strip(),
+                **optional_values,
             )
             db.session.add(new_site)
             site_cache[name] = new_site  # prevent duplicate inserts if name appears twice in CSV
@@ -1628,7 +1645,14 @@ def add_site():
             site_code=form.site_code.data,
             site_cds=form.site_cds.data,
             site_address=form.site_address.data,
-            site_type=form.site_type.data 
+            site_city=form.site_city.data or None,
+            site_state=form.site_state.data or None,
+            site_zip=form.site_zip.data or None,
+            site_type=form.site_type.data,
+            principal_first_name=form.principal_first_name.data or None,
+            principal_last_name=form.principal_last_name.data or None,
+            principal_email=form.principal_email.data or None,
+            principal_phone=form.principal_phone.data or None,
         )
         db.session.add(new_site)
         db.session.commit()
@@ -1661,7 +1685,14 @@ def edit_site(site_id):
             site.site_code == form.site_code.data and
             site.site_cds == form.site_cds.data and
             site.site_address == form.site_address.data and
-            site.site_type == form.site_type.data
+            site.site_city == (form.site_city.data or None) and
+            site.site_state == (form.site_state.data or None) and
+            site.site_zip == (form.site_zip.data or None) and
+            site.site_type == form.site_type.data and
+            site.principal_first_name == (form.principal_first_name.data or None) and
+            site.principal_last_name == (form.principal_last_name.data or None) and
+            site.principal_email == (form.principal_email.data or None) and
+            site.principal_phone == (form.principal_phone.data or None)
         ):
             flash('No changes were made.', 'info')
             return render_template('edit_site.html', form=form, site=site)
@@ -1670,7 +1701,14 @@ def edit_site(site_id):
         site.site_code = form.site_code.data
         site.site_cds = form.site_cds.data
         site.site_address = form.site_address.data
+        site.site_city = form.site_city.data or None
+        site.site_state = form.site_state.data or None
+        site.site_zip = form.site_zip.data or None
         site.site_type = form.site_type.data
+        site.principal_first_name = form.principal_first_name.data or None
+        site.principal_last_name = form.principal_last_name.data or None
+        site.principal_email = form.principal_email.data or None
+        site.principal_phone = form.principal_phone.data or None
         db.session.commit()
         flash('Site updated successfully!', 'success')
         return redirect(url_for('routes.sites'))
