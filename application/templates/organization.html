@@ -58,7 +58,7 @@
     <!-- General Settings form -->
     <div class="card-body align-items-center">
         <div class="container-md align-items-center">
-            <h3 class="bg-gradient-main custom-title-card px-3">
+            <h3 class="subtitle-misc">
             <span class="text-white">General Settings</span></h3>
             <form method="POST" action="{{ url_for('routes.organization', organization_id=organization.id) }}">
               {{ form.csrf_token }}
@@ -84,7 +84,7 @@
     <!-- Email Configuration form -->
     <div class="card-body align-items-center" id="email-config">
         <div class="container-md align-items-center"></div>
-            <h3 class="bg-gradient-main custom-title-card px-3">
+            <h3 class="subtitle-misc">
             <span class="text-white">Email Configuration</span></h3>
             <p class="text-sm text-muted mb-3 pt-4">Configure the SMTP settings used to send ticket notifications. TLS and SSL are mutually exclusive — use TLS (port 587) or SSL (port 465), not both.</p>
             <form method="POST" action="{{ url_for('routes.email_config') }}">
@@ -147,7 +147,7 @@
     <!-- Test Email -->
     <div class="card-body align-items-center" >
         <div class="container-md align-items-center">
-            <h3 class="bg-gradient-main custom-title-card px-3">
+            <h3 class="subtitle-misc">
             <span class="text-white">Send Test Email</h3>
             <p class="text-sm text-muted mb-3 pt-4">Verify your SMTP configuration by sending a test email.</p>
             <div class="row">
@@ -169,7 +169,7 @@
     <!-- Bulk Upload -->
     <div class="card-body align-items-center">
         <div class="container-md align-items-center"  id="bulk-upload">
-            <h3 class="bg-gradient-main custom-title-card px-3">
+            <h3 class="subtitle-misc">
             <span class="text-white">Bulk Upload</h3>
             <p class="text-sm text-muted mb-3 pt-4">Upload a CSV file to create or update multiple users at once.</p>
             <a href="{{ url_for('routes.upload_users') }}" class="btn bg-gradient-main add-table-button shadow-dark mb-0">

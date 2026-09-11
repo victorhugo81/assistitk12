@@ -1,6 +1,6 @@
 # AssistITK12
 
-![AssistITK12 Logo](https://apps.zavistar.com/wp-content/uploads/2026/05/assistITk12-White-Logo.png)
+![AssistITK12 Logo](/application/static/img/logo.png)
 
 AssistITK12 is a web-based ticketing system designed to help school districts manage support requests, maintenance issues, and other technical problems. It's built with Flask and Bootstrap to provide a user-friendly and efficient solution.
 
@@ -9,6 +9,7 @@ AssistITK12 is a web-based ticketing system designed to help school districts ma
 ## Features
 
 - **Issue Tracking**: Create, manage, and track support tickets with status updates and comments.
+- **Ticket Notification Bell**: Admins, Specialists, and Technicians see a live count of new tickets in the top navbar, scoped to the sites they're allowed to see, with a dropdown of recent tickets that clears once opened.
 - **Ticket Assignment**: Assign tickets to technicians and escalate when needed.
 - **File Attachments**: Attach files to tickets for additional context.
 - **Email Notifications**: Automated email alerts for ticket events (created, assigned, status changes, escalations, and new comments).
@@ -26,11 +27,14 @@ AssistITK12 is a web-based ticketing system designed to help school districts ma
 
 ## Design System
 
-The interface uses a flat, bordered visual style rather than the gradient-and-shadow "admin template" look of earlier versions:
+The interface uses a clean, minimal visual style rather than the gradient-and-shadow "admin template" look of earlier versions:
 
-- **Color** — deep navy brand primary (`#153448`) with a muted slate secondary and a terracotta accent used sparingly for calls-to-action and active states.
+- **Color** — teal brand primary (`#12707F`) with a muted slate secondary and a warm terracotta accent used sparingly for calls-to-action and active states; semantic success/warning/danger/info colors are shared with Bootstrap's own utilities so everything stays consistent.
 - **Typography** — Inter throughout, with a deliberate size/weight hierarchy instead of uniform bold headings.
-- **Components** — bordered buttons, cards, and inputs instead of drop shadows; flat page headers instead of gradient banners; a solid dark-navy sidebar with a left-border active indicator instead of a filled pill.
+- **Layout** — each page opens with a plain typographic title (icon in a small teal chip) directly on the background, with the content on a single clean white surface; tables use dividers rather than zebra stripes.
+- **Components** — softly rounded cards, buttons, inputs, and pill badges on one consistent radius scale; quiet diffuse shadows for elevation (never glows or gradients); a solid dark sidebar with a left-border active indicator.
+- **Motion** — subtle and purposeful: page content fades in on navigation, buttons and dashboard cards lift slightly on hover, flash messages slide in. Everything is disabled automatically for users with `prefers-reduced-motion` enabled.
+- **Responsive** — filters, toolbars, and stat cards stack to full width on phones; wide tables scroll horizontally inside their card.
 - **Accessibility** — visible focus rings on every interactive element, borders on all buttons/inputs for non-text contrast, and tinted (not solid-fill) alert boxes for readable status messages.
 
 All of it lives in `application/static/css/style.css` as CSS custom properties — no build step or CSS preprocessor is required.
@@ -177,6 +181,8 @@ If you encounter database migration errors:
 ```bash
 flask db upgrade
 ```
+
+If `flask db current` prints nothing at all (no revision), the database's schema was likely created directly from the models (e.g. via `db.create_all()`) rather than through migrations, so Alembic has no record of where it stands. Running `flask db upgrade` in that state tries to replay the **entire** migration history from scratch and will fail once it hits a table/column that already exists. Before upgrading, compare the actual columns (`DESCRIBE` each table, or inspect via SQLAlchemy) against a specific migration revision in `migrations/versions/`, then run `flask db stamp <that revision>` to record the true starting point — only then run `flask db upgrade`, which will apply just the remaining steps.
 
 ### Missing Dependencies
 

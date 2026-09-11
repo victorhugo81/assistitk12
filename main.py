@@ -1,5 +1,5 @@
 import os
-from flask import Flask, g
+from flask import Flask, g, url_for
 from flask_wtf.csrf import CSRFProtect
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -116,6 +116,17 @@ def create_app(config_name=None):
             dt = dt.replace(tzinfo=_tz.utc)
         return dt.astimezone().strftime(fmt)
     app.jinja_env.filters['localtime'] = localtime
+
+    # Cache-busting for static assets: appends the file's mtime as ?v= so a
+    # changed stylesheet/script is fetched immediately instead of served from
+    # the browser cache (Flask sets no cache headers on static files).
+    @app.template_global()
+    def static_bust(filename):
+        try:
+            version = int(os.path.getmtime(os.path.join(app.static_folder, filename)))
+        except OSError:
+            version = 0
+        return url_for('static', filename=filename, v=version)
 
     # Register blueprint
     from application.routes import routes_blueprint

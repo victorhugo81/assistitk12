@@ -76,6 +76,12 @@ class User(db.Model, UserMixin):
     role_id = db.Column(db.Integer, db.ForeignKey('role.id', ondelete='CASCADE'), nullable=False)
     site_id = db.Column(db.Integer, db.ForeignKey('site.id', ondelete='CASCADE'), nullable=False)
 
+    # Timestamp of the last time this user opened the "new ticket" bell
+    # dropdown. Tickets created after this (and visible to their role/site
+    # scope) count as unseen. NULL means "never seen any" — everything visible
+    # counts as new.
+    ticket_alerts_seen_at = db.Column(db.DateTime, nullable=True)
+
     def get_full_name(self):
         return f"{self.first_name} {self.middle_name or ''} {self.last_name}".strip()
     

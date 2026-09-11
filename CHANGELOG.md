@@ -5,7 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.6] - 2026-08-16
+## [2026.6.0] - 2026-09-11
+- Add notification bell
+- Clean up CSS theme
+
+## [2026.5.0] - 2026-08-16
 
 ### Added
 - About modal, opened by clicking the footer copyright notice, showing the app name, description, version, and copyright year.
@@ -15,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sidebar logo is now centered.
 - About modal's version number is now read from this changelog at runtime instead of being hardcoded in the template.
 
-## [1.2.0] - 2026-08-08
+## [2026.4.0] - 2026-08-08
 
 ### Security
 - Login now shows one generic "Login failed" message for every failure case (wrong password, inactive account, locked account) instead of a reason-specific one, and always performs a password-hash comparison — against a fixed dummy hash when no matching account exists — so failed logins can no longer be used to enumerate valid accounts via message text or response timing.
@@ -43,14 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 - Updated: `cryptography` 46.0.7 → 50.0.0, `flask-wtf` 1.2.2 → 1.3.0, `flask-caching` 2.3.1 → 2.4.0, `click` 8.3.2 → 8.3.3, `greenlet` 3.4.0 → 3.5.0, `pymysql` 1.1.2 → 1.1.3, `idna` 3.11 → 3.18, `mako` 1.3.10 → 1.3.12, `packaging` 26.0 → 26.2, `tzdata` 2026.1 → 2026.2.
 
-## [1.1.1] - 2026-04-26
+## [2026.2.0] - 2026-04-26
 
 ### Changed
 - UI redesign: migrated stylesheet to a CSS custom-property design system (color palette, shadow scale, border-radius scale, spacing scale, transition tokens).
 - Switched body font to Inter via Google Fonts for a modern, neutral appearance.
 - Login page: increased "Sign In" heading size and weight; adjusted login panel layout to `flex-direction: column` with `align-items: stretch` for better vertical alignment.
 
-## [1.1.0] - 2026-04-12
+## [2026.2.0] - 2026-04-12
 
 ### Added
 - Production startup guards that raise `RuntimeError` on launch if `SECRET_KEY` or `RATELIMIT_STORAGE_URI` are misconfigured, preventing silent security issues.
@@ -76,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 - Updated: `click` 8.3.1 → 8.3.2, `cryptography` 46.0.5 → 46.0.7, `flask` 3.1.2 → 3.1.3, `greenlet` 3.3.1 → 3.4.0, `python-dotenv` 1.2.1 → 1.2.2, `sqlalchemy` 2.0.46 → 2.0.49, `tzdata` 2025.3 → 2026.1, `werkzeug` 3.1.5 → 3.1.8, `wrapt` 2.1.1 → 2.1.2.
 
-## [1.0.0] - 2025-05-18
+## [2026.1.0] - 2025-05-18
 
 ### Added
 - First production release.
@@ -96,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Static files structure: CSS, JS, images, uploads.
 
 
-## [1.0.0] - 2025-04-27
+## [2026.0.0] - 2025-04-27
 
 ### Added
  - update mobile resolution for dashboard

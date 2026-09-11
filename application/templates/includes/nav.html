@@ -219,6 +219,41 @@
 
 
           <ul class="navbar-nav d-flex align-items-center justify-content-end">
+            {% if current_user.is_admin or current_user.is_tech_role %}
+            <li class="nav-item dropdown me-3" id="ticketAlertsDropdown">
+              <input type="hidden" id="ticketAlertsCsrf" value="{{ csrf_token() }}">
+              <button type="button" class="ticket-bell-toggle" data-bs-toggle="dropdown"
+                      aria-expanded="false" aria-label="New ticket notifications">
+                <i class="material-symbols-rounded" aria-hidden="true">notifications</i>
+                {% if new_ticket_count %}
+                <span class="ticket-bell-badge">{{ new_ticket_count if new_ticket_count < 100 else '99+' }}</span>
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end ticket-bell-menu" aria-label="New tickets">
+                <li class="ticket-bell-header">
+                  <span>New Tickets</span>
+                  {% if new_ticket_count %}<span class="text-xs text-muted">{{ new_ticket_count }} unseen</span>{% endif %}
+                </li>
+                {% if new_tickets %}
+                  {% for ticket in new_tickets %}
+                  <li>
+                    <a class="dropdown-item ticket-bell-item" href="{{ url_for('routes.edit_ticket', ticket_id=ticket.id) }}">
+                      <span class="ticket-bell-item-title">{{ ticket.title.title_name }}</span>
+                      <span class="text-xs text-muted d-block">
+                        {{ ticket.user.get_full_name() if ticket.user else 'Unknown' }} &middot; {{ ticket.site.site_name if ticket.site else '' }}
+                      </span>
+                      <span class="text-xxs">{{ ticket.created_at | localtime('%m-%d-%Y %H:%M') }}</span>
+                    </a>
+                  </li>
+                  {% endfor %}
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item text-center fw-bold" href="{{ url_for('routes.tickets') }}">View all tickets</a></li>
+                {% else %}
+                  <li class="dropdown-item-text text-sm text-muted text-center py-3">No new tickets.</li>
+                {% endif %}
+              </ul>
+            </li>
+            {% endif %}
             <li class="d-flex flex-column align-items-end">
               <a class="user-welcome" href="{{ url_for('routes.profile') }}">Hello, {{ current_user.first_name }}!</a>
               <p class="site-name-nav mb-0">{{ current_user.site.site_name }}</p>

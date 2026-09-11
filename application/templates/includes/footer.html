@@ -65,6 +65,27 @@
 
 
 
+<!-- New-ticket notification bell: mark alerts seen when the dropdown opens -->
+<script nonce="{{ g.csp_nonce }}">
+(function () {
+  var toggle = document.querySelector('.ticket-bell-toggle');
+  var dropdown = document.getElementById('ticketAlertsDropdown');
+  var badge = document.querySelector('.ticket-bell-badge');
+  var csrfInput = document.getElementById('ticketAlertsCsrf');
+  if (!toggle || !dropdown || !csrfInput) return;
+
+  dropdown.addEventListener('show.bs.dropdown', function () {
+    if (!badge) return; // nothing unseen — no need to call the server
+    fetch('{{ url_for("routes.mark_ticket_alerts_seen") }}', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfInput.value }
+    }).then(function (r) {
+      if (r.ok) badge.remove();
+    }).catch(function () { /* non-critical — badge just clears on next reload */ });
+  }, { once: true });
+})();
+</script>
+
 <!-- Mobile menu toggle -->
 <script nonce="{{ g.csp_nonce }}">
 (function () {

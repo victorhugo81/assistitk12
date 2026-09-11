@@ -59,6 +59,52 @@ def inject_app_version():
     return dict(app_version=get_app_version())
 
 
+@routes_blueprint.app_context_processor
+def inject_new_ticket_alerts():
+    """
+    Powers the notification bell in the top navbar: a count + short list of
+    recently-created tickets the current user hasn't seen yet.
+
+    Only meaningful for staff who handle tickets (Admin/Specialist/
+    Technician) — everyone else gets empty defaults so the template can
+    safely reference these variables unconditionally.
+    """
+    empty = dict(new_ticket_count=0, new_tickets=[])
+    if not current_user.is_authenticated or not (current_user.is_admin or current_user.is_tech_role):
+        return empty
+
+    try:
+        # Same visibility scope as the /tickets list: Admin/Specialist see
+        # every site, Technician is scoped to their own site. Deliberately
+        # includes tickets the current user created themselves — the same
+        # admin/technician often both files and resolves tickets (e.g.
+        # entering one from a phone call), so excluding self-created
+        # tickets made the bell miss real new work.
+        query = Ticket.query
+        if current_user.role_id == 3:
+            query = query.filter(Ticket.site_id == current_user.site_id)
+
+        if current_user.ticket_alerts_seen_at:
+            query = query.filter(Ticket.created_at > current_user.ticket_alerts_seen_at)
+
+        new_tickets = query.order_by(Ticket.created_at.desc()).limit(8).all()
+        new_ticket_count = query.count()
+    except Exception:
+        return empty
+
+    return dict(new_ticket_count=new_ticket_count, new_tickets=new_tickets)
+
+
+# ****************** Mark ticket alerts seen (AJAX) *******************************
+@routes_blueprint.route('/notifications/tickets/mark-seen', methods=['POST'])
+@limiter.limit("30 per minute", key_func=get_remote_address)
+@login_required
+def mark_ticket_alerts_seen():
+    current_user.ticket_alerts_seen_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 # *****************************************************************
 #-------------------- Core Setup -------------------------
 # -------------- Do not change this section --------------

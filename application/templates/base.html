@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
   <!-- CSS Files -->
   <link id="pagestyle" href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet" />
-  <link id="pagestyle" href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet" />
+  <link id="pagestyle" href="{{ static_bust('css/style.css') }}" rel="stylesheet" />
 </head>
 <body class="g-sidenav-show  bg-gray-100">
     <a href="#content" class="visually-hidden-focusable">Skip to main content</a>
